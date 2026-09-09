@@ -122,7 +122,10 @@ export default function DocumentoPage() {
                 Origem
               </a>
               {doc.instrument?.id || doc.instrumentId ? (
-                <a className="secondary" href="/instrumentos">
+                <a
+                  className="secondary"
+                  href={`/instrumentos/${doc.instrument?.id || doc.instrumentId}`}
+                >
                   Instrumento: {doc.instrument?.title || doc.instrumentId}
                 </a>
               ) : null}

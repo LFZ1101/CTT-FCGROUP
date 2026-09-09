@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DocumentClass, ClauseCategory } from '@prisma/client';
+import { DocumentClass, ClauseCategory, InstrumentStatus } from '@prisma/client';
 import { classifyDocument } from './classify.ts';
 import { segmentClauses } from './segment.ts';
 import { extractPages } from './extract.ts';
 import { extractMetadata } from './metadata.ts';
+import { mapInstrumentType, isLockedInstrumentStatus } from './promote.ts';
 
 test('classifica CCT por heurística com evidência textual', () => {
   const result = classifyDocument('CONVENÇÃO COLETIVA DE TRABALHO 2026/2027', 'CCT Comércio');
@@ -88,4 +89,17 @@ test('extrai metadados de HTML stripado da fixture', async () => {
   assert.equal(meta.endDate, '2027-04-30');
   assert.ok((meta.cnpjs || []).length >= 2);
   assert.ok((meta.parties || []).every((p) => /Comércio/i.test(p)));
+});
+
+test('mapeia classe documental para tipo de instrumento', () => {
+  assert.equal(mapInstrumentType(DocumentClass.CCT), 'CCT');
+  assert.equal(mapInstrumentType(DocumentClass.ADDENDUM), 'ADDENDUM');
+  assert.equal(mapInstrumentType(DocumentClass.NOTICE), null);
+  assert.equal(mapInstrumentType(DocumentClass.IRRELEVANT), null);
+});
+
+test('instrumentos validados/rejeitados ficam travados para reparse', () => {
+  assert.equal(isLockedInstrumentStatus(InstrumentStatus.VALIDATED), true);
+  assert.equal(isLockedInstrumentStatus(InstrumentStatus.REJECTED), true);
+  assert.equal(isLockedInstrumentStatus(InstrumentStatus.PENDING_REVIEW), false);
 });

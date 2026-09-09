@@ -63,13 +63,20 @@
 
 - Após `READY_FOR_REVIEW`, documentos CCT/ACT/aditivo/prorrogação geram/atualizam `CollectiveInstrument`.
 - Copia vigência, registro, território, categorias, resumo (partes/CNPJs) e cláusulas para `InstrumentClause`.
-- `DiscoveredDocument.instrumentId` liga o artefato bruto ao instrumento.
+- `DiscoveredDocument.instrumentId` liga o artefato bruto ao instrumento; `DiscoveryStatus.LINKED`.
 - Status inicial `PENDING_REVIEW`.
+- Reparse **não** sobrescreve instrumentos `VALIDATED`/`REJECTED`.
 - UI `/instrumentos` lista rascunhos e links aos documentos de origem.
 
-## Próximo (3F+)
+## 3F — Validação humana (entregue)
+
+- `POST /instruments/:id/validate` e `POST /instruments/:id/reject`.
+- Persiste `InstrumentValidation` + `AuditLog` + `Alert`.
+- Transições permitidas a partir de `DISCOVERED`/`PENDING_REVIEW`.
+- UI `/instrumentos` com ações rápidas e detalhe `/instrumentos/[id]`.
+
+## Próximo (3G+)
 
 - Comparador de versões / diff de cláusulas
 - Compatibilidade empresa × instrumento
-- Validação humana do rascunho (`PENDING_REVIEW` → `VALIDATED`)
 - RAG com citação (somente após base documental estável)

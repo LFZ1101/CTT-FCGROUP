@@ -1,5 +1,6 @@
 import {
   CollectiveInstrumentType,
+  DiscoveryStatus,
   DocumentClass,
   InstrumentStatus,
   PrismaClient,
@@ -7,7 +8,9 @@ import {
 import type { ExtractedMetadata } from './metadata.js';
 import type { SegmentedClause } from './segment.js';
 
-function mapInstrumentType(documentClass: DocumentClass | null | undefined): CollectiveInstrumentType | null {
+export function mapInstrumentType(
+  documentClass: DocumentClass | null | undefined,
+): CollectiveInstrumentType | null {
   switch (documentClass) {
     case DocumentClass.CCT:
       return CollectiveInstrumentType.CCT;
@@ -20,6 +23,10 @@ function mapInstrumentType(documentClass: DocumentClass | null | undefined): Col
     default:
       return null;
   }
+}
+
+export function isLockedInstrumentStatus(status: InstrumentStatus): boolean {
+  return status === InstrumentStatus.VALIDATED || status === InstrumentStatus.REJECTED;
 }
 
 function parseDate(value?: string | null): Date | undefined {
@@ -45,7 +52,30 @@ export async function promoteToInstrument(
   },
 ): Promise<string | null> {
   const type = mapInstrumentType(input.documentClass);
-  if (!type) return null;
+
+  if (!type) {
+    if (input.existingInstrumentId) {
+      await prisma.discoveredDocument.update({
+        where: { id: input.documentId },
+        data: { instrumentId: null, status: DiscoveryStatus.NEW },
+      });
+    }
+    return null;
+  }
+
+  if (input.existingInstrumentId) {
+    const existing = await prisma.collectiveInstrument.findFirst({
+      where: { id: input.existingInstrumentId, tenantId: input.tenantId },
+    });
+
+    if (existing && isLockedInstrumentStatus(existing.status)) {
+      await prisma.discoveredDocument.update({
+        where: { id: input.documentId },
+        data: { instrumentId: existing.id, status: DiscoveryStatus.LINKED },
+      });
+      return existing.id;
+    }
+  }
 
   const title =
     input.metadata.title ||
@@ -108,7 +138,7 @@ export async function promoteToInstrument(
 
   await prisma.discoveredDocument.update({
     where: { id: input.documentId },
-    data: { instrumentId: instrument.id },
+    data: { instrumentId: instrument.id, status: DiscoveryStatus.LINKED },
   });
 
   return instrument.id;

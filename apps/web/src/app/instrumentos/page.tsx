@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import Link from 'next/link';
 import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
@@ -21,10 +22,17 @@ type Instrument = {
   discoveredDocuments?: Array<{ id: string; title?: string | null }>;
 };
 
-export default function Instrumentos() {
+export default function InstrumentosPage() {
   const [rows, setRows] = useState<Instrument[]>([]);
   const [open, setOpen] = useState(false);
-  const load = () => api<Instrument[]>('/instruments').then(setRows).catch(() => {});
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () =>
+    api<Instrument[]>('/instruments')
+      .then(setRows)
+      .catch((e) => setError(e?.message || 'Falha ao listar instrumentos'));
+
   useEffect(() => {
     void load();
   }, []);
@@ -53,27 +61,46 @@ export default function Instrumentos() {
     load();
   }
 
+  async function review(id: string, action: 'validate' | 'reject') {
+    setBusyId(id);
+    setError(null);
+    try {
+      await api(`/instruments/${id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Falha na revisão');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <Shell title="CCT / ACT">
       <div className="page">
         <PageHeader
           eyebrow="Instrumentos coletivos"
           title="CCT, ACT e aditivos"
-          description="Rascunhos gerados automaticamente a partir do parse documental, com vigência e cláusulas."
+          description="Rascunhos gerados automaticamente a partir do parse documental, com validação humana."
           action={
             <button className="primary" onClick={() => setOpen(true)}>
               + Novo instrumento
             </button>
           }
         />
+        {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
         <DataTable
-          headers={['Instrumento', 'Registro', 'Vigência', 'Território', 'Status', 'Cláusulas', 'Docs']}
+          headers={['Instrumento', 'Registro', 'Vigência', 'Território', 'Status', 'Cláusulas', 'Ações']}
           empty={!rows.length}
         >
           {rows.map((x) => (
             <tr key={x.id}>
               <td className="titlecell">
-                <b>{x.title}</b>
+                <Link href={`/instrumentos/${x.id}`}>
+                  <b>{x.title}</b>
+                </Link>
                 <span>{x.type}</span>
               </td>
               <td>{x.registration || '—'}</td>
@@ -91,12 +118,29 @@ export default function Instrumentos() {
               </td>
               <td>{x._count?.clauses || 0}</td>
               <td>
-                {(x.discoveredDocuments || []).map((d) => (
-                  <a key={d.id} href={`/documentos/${d.id}`} style={{ display: 'block' }}>
-                    {d.title || d.id.slice(0, 8)}
-                  </a>
-                ))}
-                {!x.discoveredDocuments?.length ? '—' : null}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <Link className="secondary" href={`/instrumentos/${x.id}`}>
+                    Abrir
+                  </Link>
+                  {x.status === 'PENDING_REVIEW' || x.status === 'DISCOVERED' ? (
+                    <>
+                      <button
+                        className="primary"
+                        disabled={busyId === x.id}
+                        onClick={() => review(x.id, 'validate')}
+                      >
+                        Validar
+                      </button>
+                      <button
+                        className="secondary"
+                        disabled={busyId === x.id}
+                        onClick={() => review(x.id, 'reject')}
+                      >
+                        Rejeitar
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </td>
             </tr>
           ))}
