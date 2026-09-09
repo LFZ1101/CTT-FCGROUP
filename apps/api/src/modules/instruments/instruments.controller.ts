@@ -41,4 +41,32 @@ export class InstrumentsController {
   ) {
     return this.service.reject(user.tenantId, user.sub, id, dto);
   }
+
+  @Get(':id/applications')
+  listApplications(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.listApplications(user.tenantId, id);
+  }
+
+  @Post(':id/applications/suggest')
+  suggestApplications(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.suggestApplications(user.tenantId, id);
+  }
+
+  @Post(':id/applications/:applicationId/confirm')
+  confirmApplication(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Param('applicationId') applicationId: string,
+  ) {
+    return this.service.confirmApplication(user.tenantId, user.sub, id, applicationId, true);
+  }
+
+  @Post(':id/applications/:applicationId/unconfirm')
+  unconfirmApplication(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Param('applicationId') applicationId: string,
+  ) {
+    return this.service.confirmApplication(user.tenantId, user.sub, id, applicationId, false);
+  }
 }

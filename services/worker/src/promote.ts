@@ -35,6 +35,54 @@ function parseDate(value?: string | null): Date | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
+function inferPartyKind(name: string): string {
+  const lower = name.toLowerCase();
+  if (/empregad|trabalhador|profissional|labor/.test(lower)) return 'LABOR';
+  if (/patronal|empres|com[eé]rcio varej|ind[uú]stri/.test(lower)) return 'EMPLOYER';
+  return 'UNKNOWN';
+}
+
+async function linkParties(
+  prisma: PrismaClient,
+  tenantId: string,
+  instrumentId: string,
+  metadata: ExtractedMetadata,
+) {
+  const unions = await prisma.union.findMany({ where: { tenantId } });
+  if (!unions.length) return;
+
+  const matched = new Map<string, string>();
+
+  for (const party of metadata.parties || []) {
+    const partyNorm = party.toLowerCase();
+    const hit = unions.find(
+      (u) =>
+        partyNorm.includes(u.name.toLowerCase()) ||
+        u.name.toLowerCase().includes(partyNorm.slice(0, 24)) ||
+        (u.acronym && partyNorm.includes(u.acronym.toLowerCase())),
+    );
+    if (hit) matched.set(hit.id, inferPartyKind(party));
+  }
+
+  for (const cnpj of metadata.cnpjs || []) {
+    const digits = cnpj.replace(/\D/g, '');
+    const hit = unions.find((u) => (u.cnpj || '').replace(/\D/g, '') === digits);
+    if (hit && !matched.has(hit.id)) matched.set(hit.id, 'UNKNOWN');
+  }
+
+  await prisma.instrumentParty.deleteMany({ where: { instrumentId } });
+  if (!matched.size) return;
+
+  await prisma.instrumentParty.createMany({
+    data: [...matched.entries()].map(([unionId, kind]) => ({
+      instrumentId,
+      unionId,
+      kind,
+    })),
+    skipDuplicates: true,
+  });
+}
+
 export async function promoteToInstrument(
   prisma: PrismaClient,
   input: {
@@ -55,10 +103,34 @@ export async function promoteToInstrument(
 
   if (!type) {
     if (input.existingInstrumentId) {
+      const existing = await prisma.collectiveInstrument.findFirst({
+        where: { id: input.existingInstrumentId, tenantId: input.tenantId },
+      });
+
+      if (existing && isLockedInstrumentStatus(existing.status)) {
+        await prisma.discoveredDocument.update({
+          where: { id: input.documentId },
+          data: { instrumentId: existing.id, status: DiscoveryStatus.LINKED },
+        });
+        return existing.id;
+      }
+
       await prisma.discoveredDocument.update({
         where: { id: input.documentId },
         data: { instrumentId: null, status: DiscoveryStatus.NEW },
       });
+
+      if (existing) {
+        const remaining = await prisma.discoveredDocument.count({
+          where: { instrumentId: existing.id },
+        });
+        if (remaining === 0 && !isLockedInstrumentStatus(existing.status)) {
+          await prisma.collectiveInstrument.update({
+            where: { id: existing.id },
+            data: { status: InstrumentStatus.SUPERSEDED },
+          });
+        }
+      }
     }
     return null;
   }
@@ -135,6 +207,8 @@ export async function promoteToInstrument(
       })),
     });
   }
+
+  await linkParties(prisma, input.tenantId, instrument.id, input.metadata);
 
   await prisma.discoveredDocument.update({
     where: { id: input.documentId },

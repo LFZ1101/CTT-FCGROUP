@@ -92,7 +92,7 @@ export default function InstrumentosPage() {
         />
         {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
         <DataTable
-          headers={['Instrumento', 'Registro', 'Vigência', 'Território', 'Status', 'Cláusulas', 'Ações']}
+          headers={['Instrumento', 'Registro', 'Vigência', 'Status', 'Cláusulas', 'Docs', 'Ações']}
           empty={!rows.length}
         >
           {rows.map((x) => (
@@ -108,7 +108,6 @@ export default function InstrumentosPage() {
                 {x.startDate ? new Date(x.startDate).toLocaleDateString('pt-BR') : '—'} →{' '}
                 {x.endDate ? new Date(x.endDate).toLocaleDateString('pt-BR') : '—'}
               </td>
-              <td>{x.territory?.slice(0, 2).join(', ') || '—'}</td>
               <td>
                 <span
                   className={`badge ${x.status === 'VALIDATED' ? 'ok' : x.status === 'PENDING_REVIEW' ? 'warn' : ''}`}
@@ -117,6 +116,14 @@ export default function InstrumentosPage() {
                 </span>
               </td>
               <td>{x._count?.clauses || 0}</td>
+              <td>
+                {(x.discoveredDocuments || []).map((d) => (
+                  <Link key={d.id} href={`/documentos/${d.id}`} style={{ display: 'block' }}>
+                    {d.title || d.id.slice(0, 8)}
+                  </Link>
+                ))}
+                {!x.discoveredDocuments?.length ? '—' : null}
+              </td>
               <td>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <Link className="secondary" href={`/instrumentos/${x.id}`}>

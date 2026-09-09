@@ -15,6 +15,22 @@ type Clause = {
   text: string;
 };
 
+type Application = {
+  id: string;
+  compatibility?: number | null;
+  confirmed: boolean;
+  rationale?: { reasons?: string[]; factors?: Record<string, number> } | null;
+  company?: {
+    id: string;
+    legalName: string;
+    tradeName?: string | null;
+    cnpj: string;
+    state?: string | null;
+    city?: string | null;
+    mainCnae?: string | null;
+  } | null;
+};
+
 type Instrument = {
   id: string;
   title: string;
@@ -29,6 +45,7 @@ type Instrument = {
   summary?: string | null;
   sourceUrl?: string | null;
   clauses?: Clause[];
+  applications?: Application[];
   discoveredDocuments?: Array<{ id: string; title?: string | null; processingStatus?: string }>;
   validations?: Array<{
     id: string;
@@ -73,6 +90,33 @@ export default function InstrumentoDetalhePage() {
       await load();
     } catch (e: any) {
       setError(e?.message || 'Falha ao revisar instrumento');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const suggest = async () => {
+    setBusy(true);
+    try {
+      await api(`/instruments/${params.id}/applications/suggest`, { method: 'POST', body: '{}' });
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao sugerir enquadramentos');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setConfirmed = async (applicationId: string, confirmed: boolean) => {
+    setBusy(true);
+    try {
+      await api(
+        `/instruments/${params.id}/applications/${applicationId}/${confirmed ? 'confirm' : 'unconfirm'}`,
+        { method: 'POST', body: '{}' },
+      );
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao atualizar enquadramento');
     } finally {
       setBusy(false);
     }
@@ -157,6 +201,70 @@ export default function InstrumentoDetalhePage() {
                 </div>
               </section>
             ) : null}
+
+            <section className="panel" style={{ marginBottom: 14 }}>
+              <div className="panelhead">
+                <div>
+                  <span className="eyebrow">ENQUADRAMENTO</span>
+                  <h2>Compatibilidade empresa × instrumento</h2>
+                </div>
+                <button className="secondary" disabled={busy} onClick={suggest}>
+                  {busy ? 'Calculando...' : 'Sugerir empresas'}
+                </button>
+              </div>
+              <div className="tablewrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Empresa</th>
+                      <th>UF</th>
+                      <th>Score</th>
+                      <th>Status</th>
+                      <th>Motivos</th>
+                      <th>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(item.applications || []).map((app) => (
+                      <tr key={app.id}>
+                        <td>
+                          <b>{app.company?.tradeName || app.company?.legalName}</b>
+                          <div style={{ fontSize: 12 }}>{app.company?.cnpj}</div>
+                        </td>
+                        <td>{app.company?.state || '—'}</td>
+                        <td>{app.compatibility != null ? `${Math.round(app.compatibility * 100)}%` : '—'}</td>
+                        <td>
+                          <span className={`badge ${app.confirmed ? 'ok' : 'warn'}`}>
+                            {app.confirmed ? 'Confirmado' : 'Sugestão'}
+                          </span>
+                        </td>
+                        <td style={{ maxWidth: 280, fontSize: 12 }}>
+                          {(app.rationale?.reasons || []).slice(0, 3).join(' · ') || '—'}
+                        </td>
+                        <td>
+                          {app.confirmed ? (
+                            <button className="secondary" disabled={busy} onClick={() => setConfirmed(app.id, false)}>
+                              Remover
+                            </button>
+                          ) : (
+                            <button className="primary" disabled={busy} onClick={() => setConfirmed(app.id, true)}>
+                              Confirmar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {!item.applications?.length ? (
+                      <tr>
+                        <td colSpan={6} className="empty">
+                          Nenhuma sugestão ainda. Use “Sugerir empresas” após validar o instrumento.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
             <div className="grid2">
               <section className="panel">

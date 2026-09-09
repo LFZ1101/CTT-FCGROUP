@@ -75,8 +75,17 @@
 - Transições permitidas a partir de `DISCOVERED`/`PENDING_REVIEW`.
 - UI `/instrumentos` com ações rápidas e detalhe `/instrumentos/[id]`.
 
-## Próximo (3G+)
+## 3G — Compatibilidade empresa × instrumento (entregue — heurística v1)
+
+- Score por território (UF), categoria/CNAE e vínculo sindical.
+- `POST /instruments/:id/applications/suggest` gera/atualiza `InstrumentApplication`.
+- `POST .../confirm` e `.../unconfirm` para validação humana do enquadramento.
+- Sugestão automática após `validate`.
+- UI no detalhe do instrumento com score, motivos e confirmação.
+- Promote vincula `InstrumentParty` quando há sindicato correspondente; reclassificação não orphaniza instrumentos travados e marca `SUPERSEDED` quando sem docs.
+
+## Próximo (3H+)
 
 - Comparador de versões / diff de cláusulas
-- Compatibilidade empresa × instrumento
+- CRUD de vínculo empresa↔sindicato na UI
 - RAG com citação (somente após base documental estável)
