@@ -35,6 +35,8 @@ type Doc = {
   mimeType?: string | null;
   failureReason?: string | null;
   needsReview?: boolean;
+  instrumentId?: string | null;
+  instrument?: { id: string; title: string; status: string; type: string } | null;
   metadata?: {
     structured?: Record<string, unknown>;
     fieldEvidence?: FieldEvidence[];
@@ -119,6 +121,11 @@ export default function DocumentoPage() {
               <a className="secondary" href={doc.url} target="_blank" rel="noreferrer">
                 Origem
               </a>
+              {doc.instrument?.id || doc.instrumentId ? (
+                <a className="secondary" href="/instrumentos">
+                  Instrumento: {doc.instrument?.title || doc.instrumentId}
+                </a>
+              ) : null}
             </div>
             {doc.failureReason ? (
               <div className="empty" style={{ color: 'crimson' }}>{doc.failureReason}</div>

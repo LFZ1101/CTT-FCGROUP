@@ -22,6 +22,7 @@ import { extractPages } from './extract.js';
 import { classifyDocument } from './classify.js';
 import { segmentClauses } from './segment.js';
 import { extractMetadata } from './metadata.js';
+import { promoteToInstrument } from './promote.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -417,13 +418,27 @@ async function parseDocument(documentId: string, tenantId: string) {
       }),
     ]);
 
+    const instrumentId = await promoteToInstrument(prisma, {
+      tenantId,
+      documentId: doc.id,
+      documentClass: classification.documentClass,
+      title: doc.title,
+      sourceUrl: doc.url,
+      documentUrl: doc.url,
+      contentHash: doc.contentHash,
+      extractedText,
+      metadata,
+      clauses,
+      existingInstrumentId: doc.instrumentId,
+    });
+
     await prisma.alert.create({
       data: {
         tenantId,
         severity: 'INFO',
         type: 'DOCUMENT_READY_FOR_REVIEW',
         title: 'Documento pronto para revisão',
-        message: `${pages.length} página(s), ${clauses.length} cláusula(s), classe ${classification.documentClass}, ${metadata.fields.length} metadado(s).`,
+        message: `${pages.length} página(s), ${clauses.length} cláusula(s), classe ${classification.documentClass}, ${metadata.fields.length} metadado(s)${instrumentId ? `, instrumento ${instrumentId}` : ''}.`,
       },
     });
   } catch (error: unknown) {

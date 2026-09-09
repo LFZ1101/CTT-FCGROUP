@@ -59,9 +59,17 @@
 8. Reprocessamento via API `/parse` e re-download funcionam
 9. UI permite revisar texto/cláusulas/metadados
 
-## Próximo (3E+)
+## 3E — Promoção para instrumento (entregue — rascunho)
 
-- Ligar metadados a `CollectiveInstrument` versionado
+- Após `READY_FOR_REVIEW`, documentos CCT/ACT/aditivo/prorrogação geram/atualizam `CollectiveInstrument`.
+- Copia vigência, registro, território, categorias, resumo (partes/CNPJs) e cláusulas para `InstrumentClause`.
+- `DiscoveredDocument.instrumentId` liga o artefato bruto ao instrumento.
+- Status inicial `PENDING_REVIEW`.
+- UI `/instrumentos` lista rascunhos e links aos documentos de origem.
+
+## Próximo (3F+)
+
 - Comparador de versões / diff de cláusulas
 - Compatibilidade empresa × instrumento
-- RAG somente após base documental estável
+- Validação humana do rascunho (`PENDING_REVIEW` → `VALIDATED`)
+- RAG com citação (somente após base documental estável)
