@@ -1,0 +1,1 @@
+import {IsIn,IsOptional,IsString} from 'class-validator'; export class CreateSourceDto{@IsIn(['MEDIADOR_MTE','LABOR_UNION','EMPLOYER_UNION','OFFICIAL_BULLETIN','MANUAL_UPLOAD','OTHER']) type!:any; @IsString() name!:string; @IsString() url!:string; @IsOptional() @IsString() unionId?:string;}
