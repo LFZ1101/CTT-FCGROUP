@@ -6,12 +6,21 @@ config({ path: resolve(process.cwd(), '.env') });
 
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { PrismaClient, DocumentProcessingStatus } from '@prisma/client';
+import { PrismaClient, DocumentProcessingStatus, DocumentClass } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CreateBucketCommand,
+  GetObjectCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import FileType from 'file-type';
 import { normalizeUrl, extractCandidateLinks } from './scrape.js';
 import { extensionForMime, isAllowedMime } from './mime.js';
+import { extractPages } from './extract.js';
+import { classifyDocument } from './classify.js';
+import { segmentClauses } from './segment.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -20,9 +29,11 @@ const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', 
 
 export const monitorQueue = new Queue('source-monitoring', { connection });
 export const downloadQueue = new Queue('document-download', { connection });
+export const parseQueue = new Queue('document-parse', { connection });
 
 const bucket = process.env.STORAGE_BUCKET || 'cct-documents';
 const maxBytes = Number(process.env.DOWNLOAD_MAX_BYTES || 52_428_800);
+const CLASSIFIER_VERSION = 'heuristic-v1';
 
 const s3 = new S3Client({
   region: process.env.STORAGE_REGION || 'us-east-1',
@@ -35,6 +46,7 @@ const s3 = new S3Client({
 });
 
 let bucketReady = false;
+
 async function ensureBucket() {
   if (bucketReady) return;
   try {
@@ -45,9 +57,29 @@ async function ensureBucket() {
   bucketReady = true;
 }
 
+async function readObject(storageKey: string) {
+  const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: storageKey }));
+  const bytes = await response.Body?.transformToByteArray();
+  if (!bytes) throw new Error('Objeto vazio no storage');
+  return Buffer.from(bytes);
+}
+
+async function enqueueParse(documentId: string, tenantId: string) {
+  await parseQueue.add(
+    'parse-document',
+    { documentId, tenantId },
+    {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 4000 },
+      removeOnComplete: 100,
+      removeOnFail: 200,
+    },
+  );
+}
+
 async function monitorSource(sourceId: string) {
   const source = await prisma.source.findUnique({ where: { id: sourceId } });
-  if (!source || !source.enabled) return;
+  if (!source?.enabled) return;
 
   const check = await prisma.sourceCheck.create({
     data: { tenantId: source.tenantId, sourceId, status: 'RUNNING' },
@@ -58,14 +90,14 @@ async function monitorSource(sourceId: string) {
       redirect: 'follow',
       headers: { 'user-agent': 'CCT-Intelligence-Monitor/1.0 (+compliance; contact-admin)' },
     });
-    const text = await response.text();
-    const links = extractCandidateLinks(text, source.url);
+    const html = await response.text();
+    const links = extractCandidateLinks(html, source.url);
     let newDocs = 0;
 
     for (const link of links) {
-      const normalized = normalizeUrl(link.url);
+      const normalizedUrl = normalizeUrl(link.url);
       const existing = await prisma.discoveredDocument.findUnique({
-        where: { sourceId_normalizedUrl: { sourceId, normalizedUrl: normalized } },
+        where: { sourceId_normalizedUrl: { sourceId, normalizedUrl } },
       });
       if (existing) {
         await prisma.discoveredDocument.update({
@@ -74,15 +106,16 @@ async function monitorSource(sourceId: string) {
         });
         continue;
       }
+
       await prisma.discoveredDocument.create({
         data: {
           tenantId: source.tenantId,
           sourceId,
           title: link.title || null,
           url: link.url,
-          normalizedUrl: normalized,
+          normalizedUrl,
           contentType: link.contentType || null,
-          documentHash: createHash('sha256').update(normalized).digest('hex'),
+          documentHash: createHash('sha256').update(normalizedUrl).digest('hex'),
           processingStatus: DocumentProcessingStatus.DISCOVERED,
           metadata: { discoveredFrom: source.url },
         },
@@ -107,6 +140,7 @@ async function monitorSource(sourceId: string) {
         finishedAt: new Date(),
       },
     });
+
     if (newDocs) {
       await prisma.alert.create({
         data: {
@@ -127,6 +161,18 @@ async function monitorSource(sourceId: string) {
   }
 }
 
+async function finishStored(docId: string, tenantId: string, data: Record<string, unknown>) {
+  await prisma.discoveredDocument.update({
+    where: { id: docId },
+    data: {
+      ...data,
+      processingStatus: DocumentProcessingStatus.STORED,
+      failureReason: null,
+    },
+  });
+  await enqueueParse(docId, tenantId);
+}
+
 async function downloadDocument(documentId: string, tenantId: string) {
   const doc = await prisma.discoveredDocument.findFirst({ where: { id: documentId, tenantId } });
   if (!doc) return;
@@ -141,9 +187,7 @@ async function downloadDocument(documentId: string, tenantId: string) {
       redirect: 'follow',
       headers: { 'user-agent': 'CCT-Intelligence-Downloader/1.0 (+compliance; contact-admin)' },
     });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} ao baixar documento`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status} ao baixar documento`);
 
     const arrayBuffer = await response.arrayBuffer();
     if (arrayBuffer.byteLength > maxBytes) {
@@ -159,9 +203,7 @@ async function downloadDocument(documentId: string, tenantId: string) {
     const detected = await FileType.fromBuffer(buffer);
     const headerMime = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     const mimeType = detected?.mime || headerMime || 'application/octet-stream';
-    if (!isAllowedMime(mimeType)) {
-      throw new Error(`MIME não permitido: ${mimeType}`);
-    }
+    if (!isAllowedMime(mimeType)) throw new Error(`MIME não permitido: ${mimeType}`);
 
     const contentHash = createHash('sha256').update(buffer).digest('hex');
     const sameContent = await prisma.documentAsset.findFirst({
@@ -170,18 +212,13 @@ async function downloadDocument(documentId: string, tenantId: string) {
     });
 
     if (sameContent && sameContent.discoveredDocumentId === doc.id) {
-      await prisma.discoveredDocument.update({
-        where: { id: doc.id },
-        data: {
-          processingStatus: DocumentProcessingStatus.STORED,
-          contentHash,
-          mimeType: sameContent.mimeType,
-          sizeBytes: sameContent.sizeBytes,
-          bucket: sameContent.bucket,
-          storageKey: sameContent.storageKey,
-          downloadedAt: new Date(),
-          failureReason: null,
-        },
+      await finishStored(doc.id, tenantId, {
+        contentHash,
+        mimeType: sameContent.mimeType,
+        sizeBytes: sameContent.sizeBytes,
+        bucket: sameContent.bucket,
+        storageKey: sameContent.storageKey,
+        downloadedAt: new Date(),
       });
       return;
     }
@@ -224,19 +261,14 @@ async function downloadDocument(documentId: string, tenantId: string) {
       },
     });
 
-    await prisma.discoveredDocument.update({
-      where: { id: doc.id },
-      data: {
-        processingStatus: DocumentProcessingStatus.STORED,
-        contentHash,
-        mimeType,
-        sizeBytes: buffer.byteLength,
-        bucket,
-        storageKey,
-        downloadedAt: new Date(),
-        failureReason: null,
-        contentType: mimeType,
-      },
+    await finishStored(doc.id, tenantId, {
+      contentHash,
+      mimeType,
+      sizeBytes: buffer.byteLength,
+      bucket,
+      storageKey,
+      downloadedAt: new Date(),
+      contentType: mimeType,
     });
 
     await prisma.alert.create({
@@ -263,6 +295,128 @@ async function downloadDocument(documentId: string, tenantId: string) {
   }
 }
 
+async function parseDocument(documentId: string, tenantId: string) {
+  const doc = await prisma.discoveredDocument.findFirst({ where: { id: documentId, tenantId } });
+  if (!doc?.storageKey || !doc.mimeType) {
+    throw new Error('Documento sem arquivo armazenado para parse');
+  }
+
+  await prisma.discoveredDocument.update({
+    where: { id: doc.id },
+    data: { processingStatus: DocumentProcessingStatus.PARSING, failureReason: null },
+  });
+
+  try {
+    await ensureBucket();
+    const buffer = await readObject(doc.storageKey);
+    const pages = await extractPages(buffer, doc.mimeType);
+    const extractedText = pages.map((p) => p.text).join('\n\n').trim();
+
+    await prisma.$transaction([
+      prisma.documentPage.deleteMany({ where: { discoveredDocumentId: doc.id, tenantId } }),
+      prisma.documentPage.createMany({
+        data: pages.map((page) => ({
+          tenantId,
+          discoveredDocumentId: doc.id,
+          pageNumber: page.pageNumber,
+          text: page.text,
+          charCount: page.text.length,
+        })),
+      }),
+      prisma.discoveredDocument.update({
+        where: { id: doc.id },
+        data: {
+          processingStatus: DocumentProcessingStatus.PARSED,
+          extractedText,
+          pageCount: pages.length,
+          parsedAt: new Date(),
+        },
+      }),
+    ]);
+
+    await prisma.discoveredDocument.update({
+      where: { id: doc.id },
+      data: { processingStatus: DocumentProcessingStatus.CLASSIFYING },
+    });
+
+    const classification = classifyDocument(extractedText, doc.title);
+    const needsReview =
+      classification.confidence < 0.8 ||
+      classification.documentClass === DocumentClass.UNKNOWN ||
+      classification.documentClass === DocumentClass.IRRELEVANT;
+
+    await prisma.discoveredDocument.update({
+      where: { id: doc.id },
+      data: {
+        processingStatus: DocumentProcessingStatus.CLASSIFIED,
+        documentClass: classification.documentClass,
+        classConfidence: classification.confidence,
+        classMethod: classification.method,
+        classifiedAt: new Date(),
+        classifierVersion: CLASSIFIER_VERSION,
+        needsReview,
+        metadata: {
+          ...((doc.metadata as Record<string, unknown>) || {}),
+          classificationEvidence: classification.evidence,
+        },
+      },
+    });
+
+    await prisma.discoveredDocument.update({
+      where: { id: doc.id },
+      data: { processingStatus: DocumentProcessingStatus.SEGMENTING },
+    });
+
+    const clauses = segmentClauses(pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text })));
+
+    await prisma.$transaction([
+      prisma.documentClause.deleteMany({ where: { discoveredDocumentId: doc.id, tenantId } }),
+      prisma.documentClause.createMany({
+        data: clauses.map((clause) => ({
+          tenantId,
+          discoveredDocumentId: doc.id,
+          number: clause.number,
+          title: clause.title,
+          text: clause.text,
+          category: clause.category,
+          startPage: clause.startPage,
+          endPage: clause.endPage,
+          confidence: clause.confidence,
+          evidence: clause.evidence,
+        })),
+      }),
+      prisma.discoveredDocument.update({
+        where: { id: doc.id },
+        data: {
+          processingStatus: DocumentProcessingStatus.READY_FOR_REVIEW,
+          needsReview: true,
+        },
+      }),
+    ]);
+
+    await prisma.alert.create({
+      data: {
+        tenantId,
+        severity: 'INFO',
+        type: 'DOCUMENT_READY_FOR_REVIEW',
+        title: 'Documento pronto para revisão',
+        message: `${pages.length} página(s), ${clauses.length} cláusula(s), classe ${classification.documentClass}.`,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    await prisma.discoveredDocument.update({
+      where: { id: doc.id },
+      data: {
+        processingStatus: DocumentProcessingStatus.FAILED,
+        failureReason: message,
+        retryCount: { increment: 1 },
+      },
+    });
+    throw error;
+  }
+}
+
 new Worker(
   'source-monitoring',
   async (job) => {
@@ -281,6 +435,16 @@ new Worker(
   { connection, concurrency: Number(process.env.DOWNLOAD_CONCURRENCY || 2) },
 );
 
+new Worker(
+  'document-parse',
+  async (job) => {
+    if (job.name === 'parse-document') {
+      await parseDocument(job.data.documentId, job.data.tenantId);
+    }
+  },
+  { connection, concurrency: Number(process.env.PARSE_CONCURRENCY || 2) },
+);
+
 async function schedule() {
   const sources = await prisma.source.findMany({ where: { enabled: true } });
   for (const source of sources) {
@@ -290,7 +454,7 @@ async function schedule() {
       { name: 'check-source', data: { sourceId: source.id } },
     );
   }
-  console.log(`[worker] ${sources.length} fonte(s) agendadas; download pipeline ativo`);
+  console.log(`[worker] ${sources.length} fonte(s) agendadas; download + parse/classify/segment ativos`);
 }
 
 schedule();

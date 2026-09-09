@@ -138,9 +138,10 @@ export default function MonitoramentoPage() {
                   <td>{d.contentHash ? `${d.contentHash.slice(0, 12)}…` : '—'}</td>
                   <td>{new Date(d.firstSeenAt).toLocaleString('pt-BR')}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button className="secondary" onClick={() => downloadOne(d.id)}>Baixar</button>
                       {d.contentHash ? <button className="secondary" onClick={() => openSigned(d.id)}>Abrir</button> : null}
+                      <a className="secondary" href={`/documentos/${d.id}`}>Revisar</a>
                     </div>
                   </td>
                 </tr>

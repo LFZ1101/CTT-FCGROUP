@@ -74,6 +74,8 @@ model Tenant {
   sourceChecks SourceCheck[]
   discoveredDocuments DiscoveredDocument[]
   documentAssets DocumentAsset[]
+  documentPages DocumentPage[]
+  documentClauses DocumentClause[]
 }
 
 model User {
@@ -397,17 +399,29 @@ model DiscoveredDocument {
   lastSeenAt       DateTime                 @default(now())
   instrumentId     String?
   metadata         Json?
+  extractedText    String?
+  pageCount        Int?
+  parsedAt         DateTime?
+  documentClass    DocumentClass?
+  classConfidence  Float?
+  classMethod      String?
+  classifiedAt     DateTime?
+  classifierVersion String?
+  needsReview      Boolean                  @default(true)
 
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   source      Source           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   instrument  CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
   assets      DocumentAsset[]
+  pages       DocumentPage[]
+  clauses     DocumentClause[]
 
   @@unique([sourceId, normalizedUrl])
   @@index([tenantId, status, firstSeenAt])
   @@index([tenantId, processingStatus])
   @@index([documentHash])
   @@index([contentHash])
+  @@index([tenantId, documentClass])
 }
 
 model DocumentAsset {
@@ -430,4 +444,75 @@ model DocumentAsset {
   @@index([tenantId, contentHash])
   @@index([tenantId, createdAt])
   @@index([contentHash])
+}
+
+enum DocumentClass {
+  CCT
+  ACT
+  ADDENDUM
+  EXTENSION
+  NOTICE
+  IRRELEVANT
+  UNKNOWN
+}
+
+enum ClauseCategory {
+  FLOOR
+  ADJUSTMENT
+  SALARY
+  MEAL_VOUCHER
+  MEAL
+  WORKDAY
+  HOUR_BANK
+  OVERTIME
+  ALLOWANCE
+  CASHIER_BREAK
+  DAYCARE
+  CONTRIBUTION
+  VACATION
+  STABILITY
+  HOMOLOGATION
+  SUNDAY_HOLIDAY
+  HEALTH_SAFETY
+  BENEFITS
+  OTHER
+}
+
+model DocumentPage {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String
+  pageNumber           Int
+  text                 String
+  charCount            Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([discoveredDocumentId, pageNumber])
+  @@index([tenantId, discoveredDocumentId])
+}
+
+model DocumentClause {
+  id                   String         @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String
+  number               String?
+  title                String?
+  text                 String
+  category             ClauseCategory @default(OTHER)
+  startPage            Int?
+  endPage              Int?
+  confidence           Float?
+  structuredData       Json?
+  evidence             Json?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, discoveredDocumentId])
+  @@index([tenantId, category])
 }

@@ -19,6 +19,16 @@ export class DocumentsController {
     return this.service.get(user.tenantId, id);
   }
 
+  @Get(':id/pages')
+  pages(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
+    return this.service.pages(user.tenantId, id);
+  }
+
+  @Get(':id/clauses')
+  clauses(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
+    return this.service.clauses(user.tenantId, id);
+  }
+
   @Get(':id/signed-url')
   signedUrl(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
     return this.service.signedUrl(user.tenantId, id);
@@ -32,5 +42,15 @@ export class DocumentsController {
   @Post(':id/download')
   enqueueOne(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
     return this.service.enqueueDownload(user.tenantId, id);
+  }
+
+  @Post('parse')
+  enqueueParse(@CurrentUser() user: { tenantId: string }, @Body() dto: EnqueueDownloadDto) {
+    return this.service.enqueueParse(user.tenantId, dto.documentId);
+  }
+
+  @Post(':id/parse')
+  enqueueParseOne(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
+    return this.service.enqueueParse(user.tenantId, id);
   }
 }
