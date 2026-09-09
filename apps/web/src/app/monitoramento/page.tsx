@@ -130,7 +130,7 @@ export default function MonitoramentoPage() {
                   </td>
                   <td>{d.source?.name}</td>
                   <td>
-                    <span className={`badge ${d.processingStatus === 'FAILED' ? 'warn' : d.processingStatus === 'STORED' ? 'ok' : 'info'}`}>
+                    <span className={`badge ${d.processingStatus === 'FAILED' ? 'warn' : ['STORED','READY_FOR_REVIEW','CLASSIFIED','PARSED'].includes(d.processingStatus) ? 'ok' : 'info'}`}>
                       {d.processingStatus}
                     </span>
                     {d.failureReason ? <div className="feedmeta">{d.failureReason}</div> : null}

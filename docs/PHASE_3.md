@@ -35,20 +35,33 @@
 - Persistência em `DocumentClause` com evidência/página.
 - Endpoint `GET /api/v1/documents/:id/clauses`.
 
-## 3D — Classificação + metadados (parcial)
+## 3D — Classificação + metadados (entregue — heurística v1)
 
 - Classificador heurístico v1: `CCT`, `ACT`, `ADDENDUM`, `EXTENSION`, `NOTICE`, `IRRELEVANT`, `UNKNOWN`.
-- Confiança + evidência + `classifierVersion`.
-- `needsReview=true` ao final (`READY_FOR_REVIEW`).
-- Metadados estruturados finos (vigência/partes/CNPJ) ficam para a próxima iteração.
+- Confiança + evidência textual (snippet/página) + `classifierVersion`.
+- Extração de metadados estruturados com evidência (`metadata.structured` + `metadata.fieldEvidence`):
+  - vigência (`startDate`/`endDate`), data-base, registro Mediador, solicitação
+  - categoria, território (UF), partes (sindicatos), CNPJs
+- `needsReview` derivado de confiança baixa, classe `UNKNOWN`/`IRRELEVANT` ou metadados incompletos/fracos.
+- Status final `READY_FOR_REVIEW` (revisão necessária ou opcional).
+- UI `/documentos/[id]` exibe painel de metadados + evidências.
+- Fixture local: `fixtures/cct-demo/` (HTML rico + PDF mínimo).
 
-## Critérios de aceite 3B/3C
+## Critérios de aceite 3B/3C/3D
 
 1. Documento `STORED` dispara parse automaticamente
 2. Texto é extraído preservando páginas
 3. Páginas ficam em `DocumentPage`
-4. Classe documental é sugerida com confiança
+4. Classe documental é sugerida com confiança e evidência
 5. Cláusulas são segmentadas e categorizadas
-6. Status final `READY_FOR_REVIEW`
-7. Reprocessamento via API `/parse` funciona
-8. UI permite revisar texto/cláusulas
+6. Metadados estruturados (vigência/partes/CNPJ) com evidência
+7. Status final `READY_FOR_REVIEW`
+8. Reprocessamento via API `/parse` e re-download funcionam
+9. UI permite revisar texto/cláusulas/metadados
+
+## Próximo (3E+)
+
+- Ligar metadados a `CollectiveInstrument` versionado
+- Comparador de versões / diff de cláusulas
+- Compatibilidade empresa × instrumento
+- RAG somente após base documental estável

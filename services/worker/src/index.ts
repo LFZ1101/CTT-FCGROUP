@@ -21,6 +21,7 @@ import { extensionForMime, isAllowedMime } from './mime.js';
 import { extractPages } from './extract.js';
 import { classifyDocument } from './classify.js';
 import { segmentClauses } from './segment.js';
+import { extractMetadata } from './metadata.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -339,11 +340,19 @@ async function parseDocument(documentId: string, tenantId: string) {
       data: { processingStatus: DocumentProcessingStatus.CLASSIFYING },
     });
 
-    const classification = classifyDocument(extractedText, doc.title);
+    const pagePayload = pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text }));
+    const classification = classifyDocument(extractedText, doc.title, pagePayload);
+    const metadata = extractMetadata(pagePayload, doc.title);
+    const weakMetadata =
+      !metadata.startDate ||
+      !metadata.endDate ||
+      !(metadata.parties && metadata.parties.length > 0) ||
+      metadata.fields.some((f) => f.confidence < 0.7);
     const needsReview =
       classification.confidence < 0.8 ||
       classification.documentClass === DocumentClass.UNKNOWN ||
-      classification.documentClass === DocumentClass.IRRELEVANT;
+      classification.documentClass === DocumentClass.IRRELEVANT ||
+      weakMetadata;
 
     await prisma.discoveredDocument.update({
       where: { id: doc.id },
@@ -358,6 +367,20 @@ async function parseDocument(documentId: string, tenantId: string) {
         metadata: {
           ...((doc.metadata as Record<string, unknown>) || {}),
           classificationEvidence: classification.evidence,
+          structured: {
+            title: metadata.title,
+            startDate: metadata.startDate,
+            endDate: metadata.endDate,
+            baseDate: metadata.baseDate,
+            registration: metadata.registration,
+            requestNumber: metadata.requestNumber,
+            category: metadata.category,
+            territory: metadata.territory,
+            parties: metadata.parties,
+            cnpjs: metadata.cnpjs,
+          },
+          fieldEvidence: metadata.fields,
+          extractedAt: new Date().toISOString(),
         },
       },
     });
@@ -367,7 +390,7 @@ async function parseDocument(documentId: string, tenantId: string) {
       data: { processingStatus: DocumentProcessingStatus.SEGMENTING },
     });
 
-    const clauses = segmentClauses(pages.map((p) => ({ pageNumber: p.pageNumber, text: p.text })));
+    const clauses = segmentClauses(pagePayload);
 
     await prisma.$transaction([
       prisma.documentClause.deleteMany({ where: { discoveredDocumentId: doc.id, tenantId } }),
@@ -389,7 +412,7 @@ async function parseDocument(documentId: string, tenantId: string) {
         where: { id: doc.id },
         data: {
           processingStatus: DocumentProcessingStatus.READY_FOR_REVIEW,
-          needsReview: true,
+          needsReview,
         },
       }),
     ]);
@@ -400,7 +423,7 @@ async function parseDocument(documentId: string, tenantId: string) {
         severity: 'INFO',
         type: 'DOCUMENT_READY_FOR_REVIEW',
         title: 'Documento pronto para revisão',
-        message: `${pages.length} página(s), ${clauses.length} cláusula(s), classe ${classification.documentClass}.`,
+        message: `${pages.length} página(s), ${clauses.length} cláusula(s), classe ${classification.documentClass}, ${metadata.fields.length} metadado(s).`,
       },
     });
   } catch (error: unknown) {
