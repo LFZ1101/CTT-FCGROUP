@@ -23,10 +23,11 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 21 | Impacto em folha (piso × colaboradores) | DONE_NEEDS_TESTS |
 | 22 | Tarefas automáticas | DONE_NEEDS_TESTS |
 | 23 | Integrações ONVIO / Domínio / Alterdata | BLOCKED (framework + intenção; sem sync fake) |
+| 24 | Crawlers sindicais (adapters + Source.config) | DONE_NEEDS_TESTS |
 
 ## Fora de escopo / documentado
 
-- Crawlers sindicais **específicos por sindicato** (há monitoramento genérico de sites)
+- Template hardcoded por CNPJ/nome de sindicato (substituído por adapters + `Source.config`)
 - Billing SaaS / planos
 - Sync real de ERP sem API/credenciais
 
@@ -36,3 +37,4 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 - `PHASE_7_INTEGRATIONS.md`
 - `COLLABORATIVE_NETWORK.md`
 - `IMPORT_CSV.md`
+- `UNION_CRAWLERS.md`

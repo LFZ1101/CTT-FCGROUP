@@ -26,7 +26,7 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | Vigilância | `GET /surveillance`, `POST /surveillance/scan-divergences` |
 | Prazos | `GET /deadlines`, `POST /deadlines/scan-alerts`, `POST /instruments/:id/extract-deadlines` |
 | Impacto | `GET /instruments/:id/impacted-companies`, `GET /instruments/:id/operational-summary` |
-| Fontes | `GET/POST /sources`, `GET/PATCH /sources/:id` (`enabled`) |
+| Fontes | `GET/POST /sources`, `GET/PATCH /sources/:id` (`enabled`, `config` com `adapter`/`linkKeywords`/patterns — ver `UNION_CRAWLERS.md`) |
 | Instrumentos | list/detail, validate/reject, applications suggest/confirm |
 | Documentos | `GET /documents`, `GET /documents/search?q=`, detail/pages/clauses/signed-url, enqueue download/parse |
 | Monitoramento | `GET /monitoring/history\|discoveries`, `POST /monitoring/check` |

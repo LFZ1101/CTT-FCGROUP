@@ -17,6 +17,7 @@ import {
 } from '@aws-sdk/client-s3';
 import FileType from 'file-type';
 import { normalizeUrl, extractCandidateLinks } from './scrape.js';
+import { extractUnionCandidates } from './union-adapters.js';
 import {
   extractMediadorLinks,
   isMediadorUrl,
@@ -176,9 +177,11 @@ async function monitorSource(sourceId: string) {
 
     const html = response.html;
     const baseUrl = response.finalUrl || source.url;
-    const generic = extractCandidateLinks(html, baseUrl);
     const mediadorExtra = isMediador ? extractMediadorLinks(html, baseUrl) : [];
-    const links = mergeCandidates(generic, mediadorExtra);
+    const unionExtract = isMediador
+      ? { adapter: 'mediador' as const, links: extractCandidateLinks(html, baseUrl) }
+      : extractUnionCandidates(html, baseUrl, source.config);
+    const links = mergeCandidates(unionExtract.links, mediadorExtra);
     let newDocs = 0;
 
     for (const link of links) {
@@ -208,7 +211,7 @@ async function monitorSource(sourceId: string) {
             discoveredFrom: source.url,
             ...(link.registration ? { registration: link.registration } : {}),
             ...(link.requestNumber ? { requestNumber: link.requestNumber } : {}),
-            adapter: isMediador ? 'mediador-v1' : 'generic-html-v1',
+            adapter: isMediador ? 'mediador-v1' : `${unionExtract.adapter}-v1`,
           },
         },
       });
@@ -228,7 +231,7 @@ async function monitorSource(sourceId: string) {
         status: response.ok ? 'SUCCESS' : 'HTTP_ERROR',
         httpStatus: response.status,
         documentsFound: links.length,
-        message: `${newDocs} novo(s)`,
+        message: `${newDocs} novo(s) · adapter=${unionExtract.adapter}`,
         finishedAt: new Date(),
       },
     });

@@ -149,6 +149,6 @@ Usuário cria escritório, importa empresas, cadastra sindicatos/fontes e acompa
 - [x] Impacto em folha (heurística v1 + piso × colaboradores)
 - [x] Colaboradores (CRUD + CSV, PII mínima)
 - [x] Framework integrações ERP (sem sync fake)
-- [ ] Crawlers sindicais específicos
+- [x] Crawlers sindicais específicos (registry de adapters + Source.config)
 - [x] Compatibilidade automática (score explicável + sugestão)
 - [x] Comparador de versões

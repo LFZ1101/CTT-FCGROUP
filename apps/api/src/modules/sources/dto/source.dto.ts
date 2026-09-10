@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
 
 const SOURCE_TYPES = [
   'MEDIADOR_MTE',
@@ -10,11 +10,24 @@ const SOURCE_TYPES = [
   'OTHER',
 ] as const;
 
+const UNION_ADAPTERS = ['generic-html', 'pdf-listing', 'wordpress-media', 'custom'] as const;
+
+/** Config JSON de crawler sindical (Source.config). */
+export class SourceConfigDto {
+  @IsOptional() @IsIn(UNION_ADAPTERS) adapter?: (typeof UNION_ADAPTERS)[number];
+  @IsOptional() linkKeywords?: string[];
+  @IsOptional() includePatterns?: string[];
+  @IsOptional() excludePatterns?: string[];
+  @IsOptional() hrefContains?: string[];
+  @IsOptional() maxLinks?: number;
+}
+
 export class CreateSourceDto {
   @IsIn(SOURCE_TYPES) type!: (typeof SOURCE_TYPES)[number];
   @IsString() name!: string;
   @IsString() url!: string;
   @IsOptional() @IsString() unionId?: string;
+  @IsOptional() @IsObject() config?: SourceConfigDto;
 }
 
 export class UpdateSourceDto {
@@ -23,4 +36,5 @@ export class UpdateSourceDto {
   @IsOptional() @IsString() url?: string;
   @IsOptional() @IsString() unionId?: string | null;
   @IsOptional() @IsBoolean() enabled?: boolean;
+  @IsOptional() @IsObject() config?: SourceConfigDto | null;
 }
