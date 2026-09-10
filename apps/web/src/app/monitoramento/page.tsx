@@ -42,7 +42,15 @@ export default function MonitoramentoPage() {
   const run = async () => {
     setLoading(true);
     try {
-      await api('/monitoring/check', { method: 'POST', body: JSON.stringify({}) });
+      const result = await api<{ enqueued?: number; results?: unknown[] }>('/monitoring/check', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      setError(
+        result?.enqueued != null
+          ? `${result.enqueued} fonte(s) enfileirada(s) no worker. Atualize em alguns segundos.`
+          : null,
+      );
       await load();
     } catch (e: any) {
       setError(e?.message || 'Falha ao verificar fontes');

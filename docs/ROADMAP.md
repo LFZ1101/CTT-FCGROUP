@@ -13,21 +13,21 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 6 | Classificação | DONE_NEEDS_TESTS |
 | 7 | Metadados estruturados | DONE_NEEDS_TESTS |
 | 8 | Segmentação cláusulas | DONE_NEEDS_TESTS |
-| 9 | UI revisão documental | PARTIAL (lista+detail; polish) |
+| 9 | UI revisão documental | DONE_NEEDS_TESTS (checklist + review) |
 | 10 | Comparação instrumentos | DONE_NEEDS_TESTS |
 | 11 | Compatibilidade empresa×instrumento | DONE_NEEDS_TESTS |
 | 12 | Validação humana | DONE_NEEDS_TESTS |
 | 13 | Alertas inteligentes | PARTIAL (vigência; sem notificação externa) |
-| 14 | Tarefas automáticas | PARTIAL (sync review) |
+| 14 | Tarefas automáticas | DONE_NEEDS_TESTS (sync review) |
 | 15 | RAG / IA documental | DONE_NEEDS_TESTS |
 | 16 | Busca documental | DONE_NEEDS_TESTS |
-| 17 | Dashboard enriquecido | PARTIAL |
+| 17 | Dashboard enriquecido | DONE_NEEDS_TESTS |
 | 18 | UX/UI polish | PARTIAL |
-| 19 | Observabilidade | PARTIAL (health profundo) |
-| 20 | Segurança avançada | PARTIAL (RBAC; rate limit pendente) |
-| 21 | Testes completos | PARTIAL |
-| 22 | Documentação | PARTIAL → em atualização |
-| 23 | Preparação deploy | PARTIAL (Dockerfiles) |
+| 19 | Observabilidade | DONE_NEEDS_TESTS (health) |
+| 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + rate limit + FK) |
+| 21 | Testes completos | PARTIAL → integration multi-tenant feito |
+| 22 | Documentação | DONE_NEEDS_TESTS |
+| 23 | Preparação deploy | DONE_NEEDS_TESTS (Dockerfiles + CI + migrate) |
 
 ## Próximos (não bloqueantes)
 

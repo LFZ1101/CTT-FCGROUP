@@ -190,6 +190,53 @@ export class DocumentsService {
   }
 
   /**
+   * Registro de revisão humana do artefato bruto (antes/depois do promote).
+   * Persiste needsReview + AuditLog; não substitui validate do instrumento.
+   */
+  async acknowledgeReview(
+    tenantId: string,
+    userId: string,
+    documentId: string,
+    input: { decision: 'APPROVE_METADATA' | 'NEEDS_CHANGES'; notes?: string },
+  ) {
+    const doc = await this.get(tenantId, documentId);
+    const needsReview = input.decision === 'NEEDS_CHANGES';
+    const updated = await this.prisma.discoveredDocument.update({
+      where: { id: doc.id },
+      data: {
+        needsReview,
+        metadata: {
+          ...((doc.metadata as Record<string, unknown>) || {}),
+          humanReview: {
+            decision: input.decision,
+            notes: input.notes || null,
+            userId,
+            at: new Date().toISOString(),
+          },
+        },
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action: 'DOCUMENT_REVIEW',
+        entity: 'DiscoveredDocument',
+        entityId: doc.id,
+        metadata: {
+          decision: input.decision,
+          notes: input.notes || null,
+          processingStatus: doc.processingStatus,
+          documentClass: doc.documentClass,
+        },
+      },
+    });
+
+    return updated;
+  }
+
+  /**
    * Busca documental scoped ao tenant: documentos, cláusulas e instrumentos.
    * Ranking simples por ocorrência no título vs corpo.
    */

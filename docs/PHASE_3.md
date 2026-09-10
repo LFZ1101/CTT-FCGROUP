@@ -128,10 +128,18 @@
 - Dockerfiles api/web/worker + docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT.
 - Testes: RolesGuard, tenant-scope, search ranking, mediador adapter.
 
+## 3L — Isolamento multi-tenant, migrations, monitoramento unificado, revisão UI (entregue)
+
+- API de monitoramento **apenas enfileira** `source-monitoring` (remove scrape duplicado).
+- Testes de integração Postgres: TENANT A ↛ TENANT B (empresas, instrumentos, docs, alertas, fontes, busca).
+- Migration baseline Prisma `20260910120000_init` + `migrate deploy` / CI.
+- GitHub Actions CI (Postgres + Redis): generate, migrate, typecheck, test, build.
+- UI revisão documental: checklist, aprovar metadados / marcar ajustes (`POST /documents/:id/review` + AuditLog).
+- Monitoramento UI informa enfileiramento assíncrono.
+
 ## Próximo
 
-- pgvector nativo (substituir JSON embedding)
-- E2E multi-tenant HTTP
-- Notificações externas / impacto em folha
-- Migrations versionadas em CI
-- Diff semântico entre versões (além do heurístico)
+- Notificações e-mail
+- Mediador contra portal real
+- pgvector / impacto em folha
+- E2E HTTP bearer cross-tenant

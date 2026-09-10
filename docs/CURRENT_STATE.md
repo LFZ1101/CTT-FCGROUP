@@ -2,7 +2,7 @@
 
 Auditoria baseada no **código real** (branch `cursor/cct-intelligence-autonomous-roadmap-310a`).
 
-**Data:** 2026-09-10
+**Data:** 2026-09-10 (revisão pós-3K / fase testes+ops)
 
 ## Legenda
 
@@ -20,50 +20,36 @@ Auditoria baseada no **código real** (branch `cursor/cct-intelligence-autonomou
 | Módulo | Status | Funcional | Testado | Precisa alteração |
 |---|---|---|---|---|
 | Monorepo (api/web/worker/database) | DONE | Sim | N/A | Não |
-| Auth JWT + bootstrap tenant | DONE_NEEDS_TESTS | Sim | Não | E2E auth |
-| RolesGuard / RBAC fino | DONE_NEEDS_TESTS | Sim | Sim (unit) | E2E HTTP |
-| Multi-tenancy (queries) | DONE_NEEDS_TESTS | Sim | Parcial | E2E isolamento |
-| FK ownership cross-tenant | DONE_NEEDS_TESTS | Sim | Sim (unit) | Ampliar a mais módulos |
+| Auth JWT + bootstrap tenant | DONE_NEEDS_TESTS | Sim | Parcial | E2E HTTP login |
+| RolesGuard / RBAC fino | DONE_NEEDS_TESTS | Sim | Sim (unit) | — |
+| Multi-tenancy (queries) | DONE_NEEDS_TESTS | Sim | Sim (integration) | E2E HTTP bearer |
+| FK ownership cross-tenant | DONE_NEEDS_TESTS | Sim | Sim (unit) | Ampliar módulos restantes |
 | Rate limit login | DONE_NEEDS_TESTS | Sim | Sim | Redis em cluster |
-| Empresas + vínculo sindicato | DONE_NEEDS_TESTS | Sim | Não | Testes API |
-| Sindicatos CRUD | DONE_NEEDS_TESTS | Sim | Não | E2E |
-| Fontes + enable/disable | DONE_NEEDS_TESTS | Sim | Não | E2E |
+| Empresas + vínculo sindicato | DONE_NEEDS_TESTS | Sim | Não | — |
+| Sindicatos / Fontes CRUD | DONE_NEEDS_TESTS | Sim | Não | — |
 | Alertas + scan vigência | DONE_NEEDS_TESTS | Sim | Não | Notificação externa |
-| Tarefas + sync review | DONE_NEEDS_TESTS | Sim | Não | Atribuição automática |
+| Tarefas + sync review | DONE_NEEDS_TESTS | Sim | Não | — |
 | Dashboard enriquecido | DONE_NEEDS_TESTS | Sim | Não | UX polish |
-| Monitoramento / discovery | PARTIAL | Sim | Parcial | Unificar API×worker scrape |
-| Adaptador Mediador | PARTIAL | Sim (heurístico) | Sim (unit) | Portal real JS/anti-bot |
-| Storage MinIO + DocumentAsset | DONE_NEEDS_TESTS | Sim | Parcial | Integração MinIO |
-| Download / parse / classify / clauses / promote | DONE_NEEDS_TESTS | Sim | Parcial | OCR |
-| Validação / compatibilidade / compare / RAG / audit | DONE_NEEDS_TESTS | Sim | Parcial | — |
-| Busca documental | DONE_NEEDS_TESTS | Sim | Sim (unit ranking) | Full-text Postgres |
-| UI documentos + nav | DONE_NEEDS_TESTS | Sim | Não | — |
+| Monitoramento (API→fila) | DONE_NEEDS_TESTS | Sim | Parcial | Worker deve estar up |
+| Adaptador Mediador | PARTIAL | Sim (heurístico) | Sim | Portal real JS/anti-bot |
+| Storage / pipeline documental | DONE_NEEDS_TESTS | Sim | Parcial | OCR |
+| Validação / compare / RAG / audit | DONE_NEEDS_TESTS | Sim | Parcial | — |
+| Busca documental | DONE_NEEDS_TESTS | Sim | Sim | Full-text Postgres |
+| UI revisão documental + checklist | DONE_NEEDS_TESTS | Sim | Não | — |
 | Health (db/redis) | DONE_NEEDS_TESTS | Sim | Não | — |
-| Dockerfiles app | PARTIAL | Sim (artefatos) | Não | CI build images |
-| pgvector | NOT_STARTED | Não | Não | Opcional |
-| Notificações email/push | NOT_STARTED | Não | Não | — |
-| Impacto em folha | NOT_STARTED | Não | Não | — |
-| Migrations versionadas CI | PARTIAL | Schema via push | Não | migrate deploy |
+| Migrations Prisma versionadas | DONE_NEEDS_TESTS | Sim (baseline) | CI | Evoluir com novas mudanças |
+| CI GitHub Actions | DONE_NEEDS_TESTS | Sim | — | MinIO opcional no CI |
+| Dockerfiles app | PARTIAL | Sim | Não | Validar build imagens |
+| pgvector / e-mail / folha | NOT_STARTED | Não | Não | — |
 
 ## Pipeline documental
 
 ```text
-Fonte → source-monitoring (+ adaptador Mediador quando aplicável)
-  → DiscoveredDocument
-  → document-download → MinIO + DocumentAsset
-  → document-parse → pages → classify → metadata → clauses
-  → READY_FOR_REVIEW → promote CollectiveInstrument
-  → DocumentChunk + embedding hashing-v1
-  → validação / compatibilidade / comparação / RAG / busca
+Fonte → API enfileira source-monitoring → worker (+ Mediador)
+  → DiscoveredDocument → download → parse → READY_FOR_REVIEW
+  → revisão humana (checklist + POST /documents/:id/review)
+  → promote → validação instrumento → RAG / busca / compare
 ```
-
-## Inventário de testes
-
-| Spec | Escopo |
-|---|---|
-| compare / compatibility / embeddings / retrieve / storage | API domain |
-| roles.guard / tenant-scope / search ranking | API segurança/busca |
-| intelligence / mime / mediador adapter | Worker |
 
 ## Credenciais seed
 
@@ -71,8 +57,8 @@ Fonte → source-monitoring (+ adaptador Mediador quando aplicável)
 
 ## Próximas prioridades
 
-1. E2E multi-tenant HTTP  
-2. Migrations versionadas  
-3. Rate limit + hardening produção  
-4. Mediador contra portal real  
-5. Notificações / folha / pgvector
+1. Notificações externas (e-mail)  
+2. Mediador contra portal real / anti-bot  
+3. pgvector nativo  
+4. Impacto em folha  
+5. E2E HTTP com bearer cross-tenant

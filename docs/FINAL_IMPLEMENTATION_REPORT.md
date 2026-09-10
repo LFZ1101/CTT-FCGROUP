@@ -58,6 +58,10 @@
 11. Docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT + ADR 0001
 12. Testes RolesGuard, tenant-scope, search ranking, mediador
 13. Rate limit de login + validação de FKs cross-tenant (alerts/tasks/sources)
+14. Monitoramento API→fila (sem scrape duplicado)
+15. Testes integração multi-tenant (Postgres)
+16. Migration baseline Prisma + GitHub Actions CI
+17. Checklist de revisão documental + `POST /documents/:id/review`
 
 ## Arquitetura final
 
@@ -65,7 +69,8 @@ Ver `docs/ARCHITECTURE.md`. Filas: `source-monitoring`, `document-download`, `do
 
 ## Migrations
 
-Nenhuma migration Prisma nova nesta execução (schema já suportava Alert/Task/Source/Union/Document*). Ambiente continua com `db push` em dev — **dívida**: migrations versionadas em CI.
+Baseline versionada: `packages/database/prisma/migrations/20260910120000_init`.  
+Deploy: `pnpm db:migrate:deploy` (também no GitHub Actions).
 
 ## Endpoints novos / estendidos
 
@@ -97,19 +102,17 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG.
 
 ## O QUE AINDA NÃO ESTÁ 100% PRONTO
 
-- E2E HTTP multi-tenant / auth
-- Rate limiting, WAF, CSRF edge
-- Login multi-tenant por slug / e-mail global único
-- Validação cross-tenant de FKs
-- Migrations versionadas + CI de imagens Docker
+- E2E HTTP com JWT cross-tenant (há integration Prisma)
+- Rate limit compartilhado via Redis em cluster
 - Mediador contra portal real (JS/CAPTCHA)
 - pgvector nativo
 - Notificações email/push
 - Impacto em folha de pagamento
 - OCR para PDFs escaneados
-- Unificação scraper API×worker em `packages/shared`
-- UX polish completo / acessibilidade formal
+- Build/push de imagens Docker em registry
+- UX polish / acessibilidade formal
 - Observabilidade OTel/Sentry
+- Login multi-tenant por slug / e-mail global único
 
 ## Riscos
 

@@ -27,6 +27,8 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | Comparações | `POST/GET /comparisons`, `GET /comparisons/:id` |
 | RAG | `POST /rag/ask`, `POST /rag/reindex` |
 | Auditoria | `GET /audit` |
-Health: `GET /health` (fora do prefixo `api/v1`, para probes).
+| `POST /monitoring/check` | Enfileira worker (não scrape sync) |
+| Health | `GET /health` (fora do prefixo `api/v1`, para probes) |
+| Documentos | `POST /documents/:id/review` — revisão humana do artefato |
 
 Mutações sensíveis exigem `@Roles` (OWNER/ADMIN/DP_MANAGER/ANALYST conforme rota). Leituras autenticadas; CLIENT/AUDITOR sem mutação onde RolesGuard aplica.
