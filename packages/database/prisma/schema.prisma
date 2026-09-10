@@ -1,0 +1,613 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  DP_MANAGER
+  ANALYST
+  AUDITOR
+  CLIENT
+}
+
+enum CollectiveInstrumentType {
+  CCT
+  ACT
+  ADDENDUM
+  EXTENSION
+  OTHER
+}
+
+enum InstrumentStatus {
+  DISCOVERED
+  PENDING_REVIEW
+  VALIDATED
+  REJECTED
+  EXPIRED
+  SUPERSEDED
+}
+
+enum SourceType {
+  MEDIADOR_MTE
+  LABOR_UNION
+  EMPLOYER_UNION
+  OFFICIAL_BULLETIN
+  MANUAL_UPLOAD
+  OTHER
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  companies   Company[]
+  unions      Union[]
+  instruments CollectiveInstrument[]
+  sources     Source[]
+  alerts      Alert[]
+  tasks       Task[]
+  auditLogs   AuditLog[]
+  sourceChecks SourceCheck[]
+  discoveredDocuments DiscoveredDocument[]
+  documentAssets DocumentAsset[]
+  documentPages DocumentPage[]
+  documentClauses DocumentClause[]
+  instrumentComparisons InstrumentComparison[]
+  documentChunks DocumentChunk[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  email     String
+  role      UserRole @default(ANALYST)
+  active       Boolean   @default(true)
+  passwordHash String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  validations InstrumentValidation[]
+  tasks     Task[]   @relation("TaskAssignee")
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model Company {
+  id              String   @id @default(cuid())
+  tenantId        String
+  legalName       String
+  tradeName       String?
+  cnpj            String
+  mainCnae        String?
+  secondaryCnaes  String[]
+  city            String?
+  state           String?
+  employeeCount   Int?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companyUnions   CompanyUnion[]
+  applications    InstrumentApplication[]
+  tasks           Task[]
+  alerts          Alert[]
+
+  @@unique([tenantId, cnpj])
+  @@index([tenantId])
+  @@index([mainCnae])
+}
+
+model Union {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  acronym     String?
+  cnpj        String?
+  website     String?
+  scope       String?
+  states      String[]
+  cities      String[]
+  categories  String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  companies   CompanyUnion[]
+  parties     InstrumentParty[]
+  sources     Source[]
+
+  @@index([tenantId])
+}
+
+model CompanyUnion {
+  id        String   @id @default(cuid())
+  companyId String
+  unionId   String
+  kind      String
+  confirmed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  union     Union    @relation(fields: [unionId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, unionId, kind])
+}
+
+model CollectiveInstrument {
+  id            String                   @id @default(cuid())
+  tenantId      String
+  type          CollectiveInstrumentType
+  title         String
+  registration  String?
+  status        InstrumentStatus         @default(DISCOVERED)
+  startDate     DateTime?
+  endDate       DateTime?
+  baseDate      String?
+  territory     String[]
+  categories    String[]
+  sourceUrl     String?
+  documentUrl   String?
+  documentHash  String?
+  rawText       String?
+  summary       String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parties       InstrumentParty[]
+  applications  InstrumentApplication[]
+  validations   InstrumentValidation[]
+  clauses       InstrumentClause[]
+  alerts        Alert[]
+  tasks         Task[]
+  discoveredDocuments DiscoveredDocument[]
+  comparisonsAsPrevious InstrumentComparison[] @relation("ComparisonPrevious")
+  comparisonsAsCurrent  InstrumentComparison[] @relation("ComparisonCurrent")
+  chunks                DocumentChunk[]
+
+  @@index([tenantId])
+  @@index([registration])
+  @@index([startDate, endDate])
+}
+
+model InstrumentParty {
+  id           String               @id @default(cuid())
+  instrumentId String
+  unionId      String
+  kind         String
+
+  instrument   CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  union        Union                @relation(fields: [unionId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, unionId, kind])
+}
+
+model InstrumentApplication {
+  id             String               @id @default(cuid())
+  instrumentId   String
+  companyId      String
+  compatibility  Float?
+  rationale      Json?
+  confirmed      Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  instrument     CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  company        Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, companyId])
+  @@index([companyId, confirmed])
+}
+
+model InstrumentValidation {
+  id           String               @id @default(cuid())
+  instrumentId String
+  userId       String
+  decision     String
+  notes        String?
+  createdAt    DateTime             @default(now())
+
+  instrument   CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+model InstrumentClause {
+  id           String               @id @default(cuid())
+  instrumentId String
+  number       String?
+  title        String?
+  category     String?
+  page         Int?
+  text         String
+  structured   Json?
+  createdAt    DateTime             @default(now())
+
+  instrument   CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  previousInComparisons ClauseComparison[] @relation("ClauseComparisonPrevious")
+  currentInComparisons  ClauseComparison[] @relation("ClauseComparisonCurrent")
+  chunks       DocumentChunk[]
+
+  @@index([instrumentId])
+}
+
+enum ComparisonStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ClauseChangeType {
+  UNCHANGED
+  MODIFIED
+  ADDED
+  REMOVED
+  RENAMED
+  MOVED
+}
+
+model InstrumentComparison {
+  id                   String           @id @default(cuid())
+  tenantId             String
+  previousInstrumentId String
+  currentInstrumentId  String
+  status               ComparisonStatus @default(PENDING)
+  summary              Json?
+  modelVersion         String           @default("heuristic-v1")
+  createdAt            DateTime         @default(now())
+  completedAt          DateTime?
+
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  previousInstrument CollectiveInstrument @relation("ComparisonPrevious", fields: [previousInstrumentId], references: [id], onDelete: Cascade)
+  currentInstrument  CollectiveInstrument @relation("ComparisonCurrent", fields: [currentInstrumentId], references: [id], onDelete: Cascade)
+  clauseComparisons  ClauseComparison[]
+
+  @@index([tenantId, createdAt])
+  @@index([previousInstrumentId])
+  @@index([currentInstrumentId])
+}
+
+model ClauseComparison {
+  id               String           @id @default(cuid())
+  comparisonId     String
+  previousClauseId String?
+  currentClauseId  String?
+  changeType       ClauseChangeType
+  similarity       Float?
+  summary          String?
+  structuredDiff   Json?
+  createdAt        DateTime         @default(now())
+
+  comparison     InstrumentComparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  previousClause InstrumentClause?    @relation("ClauseComparisonPrevious", fields: [previousClauseId], references: [id], onDelete: SetNull)
+  currentClause  InstrumentClause?    @relation("ClauseComparisonCurrent", fields: [currentClauseId], references: [id], onDelete: SetNull)
+
+  @@index([comparisonId, changeType])
+}
+
+model Source {
+  id           String     @id @default(cuid())
+  tenantId     String
+  unionId      String?
+  type         SourceType
+  name         String
+  url          String
+  enabled      Boolean    @default(true)
+  lastCheckedAt DateTime?
+  lastSuccessAt DateTime?
+  config       Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  union        Union?     @relation(fields: [unionId], references: [id], onDelete: SetNull)
+  checks       SourceCheck[]
+  discoveredDocuments DiscoveredDocument[]
+
+  @@index([tenantId, enabled])
+}
+
+model Alert {
+  id           String        @id @default(cuid())
+  tenantId     String
+  companyId    String?
+  instrumentId String?
+  severity     AlertSeverity @default(INFO)
+  type         String
+  title        String
+  message      String
+  readAt       DateTime?
+  createdAt    DateTime      @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company      Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  instrument   CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, readAt])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  tenantId    String
+  companyId   String?
+  instrumentId String?
+  assigneeId  String?
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Int        @default(3)
+  dueAt       DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company     Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  instrument  CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([assigneeId, status])
+}
+
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([entity, entityId])
+}
+
+model SourceCheck {
+  id          String   @id @default(cuid())
+  tenantId    String
+  sourceId    String
+  status      String
+  httpStatus  Int?
+  documentsFound Int   @default(0)
+  message     String?
+  startedAt   DateTime @default(now())
+  finishedAt  DateTime?
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, startedAt])
+  @@index([sourceId, startedAt])
+}
+
+enum DiscoveryStatus {
+  NEW
+  LINKED
+  IGNORED
+  ERROR
+}
+
+enum DocumentProcessingStatus {
+  DISCOVERED
+  QUEUED
+  DOWNLOADING
+  DOWNLOADED
+  VALIDATING
+  STORED
+  PARSING
+  PARSED
+  CLASSIFYING
+  CLASSIFIED
+  SEGMENTING
+  READY_FOR_REVIEW
+  FAILED
+}
+
+model DiscoveredDocument {
+  id               String                   @id @default(cuid())
+  tenantId         String
+  sourceId         String
+  title            String?
+  url              String
+  normalizedUrl    String
+  contentType      String?
+  /// Hash legado da URL (descoberta). Preferir contentHash após download.
+  documentHash     String?
+  contentHash      String?
+  mimeType         String?
+  sizeBytes        Int?
+  bucket           String?
+  storageKey       String?
+  status           DiscoveryStatus          @default(NEW)
+  processingStatus DocumentProcessingStatus @default(DISCOVERED)
+  failureReason    String?
+  retryCount       Int                      @default(0)
+  downloadedAt     DateTime?
+  firstSeenAt      DateTime                 @default(now())
+  lastSeenAt       DateTime                 @default(now())
+  instrumentId     String?
+  metadata         Json?
+  extractedText    String?
+  pageCount        Int?
+  parsedAt         DateTime?
+  documentClass    DocumentClass?
+  classConfidence  Float?
+  classMethod      String?
+  classifiedAt     DateTime?
+  classifierVersion String?
+  needsReview      Boolean                  @default(true)
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  source      Source           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  instrument  CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  assets      DocumentAsset[]
+  pages       DocumentPage[]
+  clauses     DocumentClause[]
+  chunks      DocumentChunk[]
+
+  @@unique([sourceId, normalizedUrl])
+  @@index([tenantId, status, firstSeenAt])
+  @@index([tenantId, processingStatus])
+  @@index([documentHash])
+  @@index([contentHash])
+  @@index([tenantId, documentClass])
+}
+
+model DocumentAsset {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String
+  version              Int      @default(1)
+  bucket               String
+  storageKey           String
+  contentHash          String
+  mimeType             String
+  sizeBytes            Int
+  originalUrl          String
+  createdAt            DateTime @default(now())
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([discoveredDocumentId, version])
+  @@index([tenantId, contentHash])
+  @@index([tenantId, createdAt])
+  @@index([contentHash])
+}
+
+enum DocumentClass {
+  CCT
+  ACT
+  ADDENDUM
+  EXTENSION
+  NOTICE
+  IRRELEVANT
+  UNKNOWN
+}
+
+enum ClauseCategory {
+  FLOOR
+  ADJUSTMENT
+  SALARY
+  MEAL_VOUCHER
+  MEAL
+  WORKDAY
+  HOUR_BANK
+  OVERTIME
+  ALLOWANCE
+  CASHIER_BREAK
+  DAYCARE
+  CONTRIBUTION
+  VACATION
+  STABILITY
+  HOMOLOGATION
+  SUNDAY_HOLIDAY
+  HEALTH_SAFETY
+  BENEFITS
+  OTHER
+}
+
+model DocumentPage {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String
+  pageNumber           Int
+  text                 String
+  charCount            Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([discoveredDocumentId, pageNumber])
+  @@index([tenantId, discoveredDocumentId])
+}
+
+model DocumentClause {
+  id                   String         @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String
+  number               String?
+  title                String?
+  text                 String
+  category             ClauseCategory @default(OTHER)
+  startPage            Int?
+  endPage              Int?
+  confidence           Float?
+  structuredData       Json?
+  evidence             Json?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+  chunks             DocumentChunk[]
+
+  @@index([tenantId, discoveredDocumentId])
+  @@index([tenantId, category])
+}
+
+/// Chunks de RAG (prioridade: cláusula). Embedding JSON opcional para futuro pgvector/OpenAI.
+model DocumentChunk {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String?
+  instrumentId         String?
+  documentClauseId     String?
+  instrumentClauseId   String?
+  pageStart            Int?
+  pageEnd              Int?
+  clauseNumber         String?
+  title                String?
+  category             String?
+  text                 String
+  metadata             Json?
+  embedding            Json?
+  modelVersion         String   @default("heuristic-v1")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument? @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+  instrument         CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  documentClause     DocumentClause?     @relation(fields: [documentClauseId], references: [id], onDelete: SetNull)
+  instrumentClause   InstrumentClause?   @relation(fields: [instrumentClauseId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, instrumentId])
+  @@index([tenantId, discoveredDocumentId])
+  @@index([tenantId, createdAt])
+}
