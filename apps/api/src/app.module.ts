@@ -12,6 +12,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { ComparisonsModule } from './modules/comparisons/comparisons.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
     TasksModule,
     MonitoringModule,
     DocumentsModule,
+    ComparisonsModule,
   ],
   controllers: [HealthController],
 })

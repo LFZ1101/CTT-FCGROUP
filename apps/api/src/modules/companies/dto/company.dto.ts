@@ -10,3 +10,9 @@ export class CreateCompanyDto {
   @IsOptional() @IsInt() @Min(0) employeeCount?: number;
 }
 export class UpdateCompanyDto extends CreateCompanyDto { @IsOptional() @IsBoolean() active?: boolean; }
+
+export class LinkCompanyUnionDto {
+  @IsString() unionId!: string;
+  @IsOptional() @IsString() kind?: string;
+  @IsOptional() @IsBoolean() confirmed?: boolean;
+}

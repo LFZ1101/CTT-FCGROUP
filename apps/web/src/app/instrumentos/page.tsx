@@ -85,9 +85,14 @@ export default function InstrumentosPage() {
           title="CCT, ACT e aditivos"
           description="Rascunhos gerados automaticamente a partir do parse documental, com validação humana."
           action={
-            <button className="primary" onClick={() => setOpen(true)}>
-              + Novo instrumento
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link className="secondary" href="/instrumentos/comparar">
+                Comparar versões
+              </Link>
+              <button className="primary" onClick={() => setOpen(true)}>
+                + Novo instrumento
+              </button>
+            </div>
           }
         />
         {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}

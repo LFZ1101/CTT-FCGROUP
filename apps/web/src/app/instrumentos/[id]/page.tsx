@@ -144,6 +144,9 @@ export default function InstrumentoDetalhePage() {
               </span>
               <span className="badge">{item.clauses?.length || 0} cláusulas</span>
               <a className="secondary" href="/instrumentos">Voltar</a>
+              <a className="secondary" href={`/instrumentos/comparar?current=${item.id}`}>
+                Comparar versão
+              </a>
               {item.sourceUrl ? (
                 <a className="secondary" href={item.sourceUrl} target="_blank" rel="noreferrer">
                   Fonte

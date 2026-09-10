@@ -84,8 +84,18 @@
 - UI no detalhe do instrumento com score, motivos e confirmação.
 - Promote vincula `InstrumentParty` quando há sindicato correspondente; reclassificação não orphaniza instrumentos travados e marca `SUPERSEDED` quando sem docs.
 
-## Próximo (3H+)
+## 3H — Comparador de versões + vínculo empresa↔sindicato (entregue — heurística v1)
 
-- Comparador de versões / diff de cláusulas
-- CRUD de vínculo empresa↔sindicato na UI
+- Modelos `InstrumentComparison` + `ClauseComparison` (`UNCHANGED|MODIFIED|ADDED|REMOVED|RENAMED|MOVED`).
+- Motor heurístico: número da cláusula → similaridade de título → Jaccard de texto/categoria.
+- API:
+  - `POST /comparisons`, `GET /comparisons`, `GET /comparisons/:id`
+  - `POST /companies/:id/unions`, `DELETE /companies/:id/unions/:linkId`
+- Persistência de resumo agregado + `structuredDiff` por cláusula; audit/alert.
+- UI `/instrumentos/comparar` (filtros por tipo de mudança) e `/empresas/[id]` (CRUD de vínculos).
+
+## Próximo (3I+)
+
 - RAG com citação (somente após base documental estável)
+- Diff semântico com embeddings (opcional; v1 não depende)
+- RolesGuard fino e trilha de auditoria completa na UI documental

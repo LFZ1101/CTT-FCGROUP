@@ -76,6 +76,7 @@ model Tenant {
   documentAssets DocumentAsset[]
   documentPages DocumentPage[]
   documentClauses DocumentClause[]
+  instrumentComparisons InstrumentComparison[]
 }
 
 model User {
@@ -189,6 +190,8 @@ model CollectiveInstrument {
   alerts        Alert[]
   tasks         Task[]
   discoveredDocuments DiscoveredDocument[]
+  comparisonsAsPrevious InstrumentComparison[] @relation("ComparisonPrevious")
+  comparisonsAsCurrent  InstrumentComparison[] @relation("ComparisonCurrent")
 
   @@index([tenantId])
   @@index([registration])
@@ -248,8 +251,64 @@ model InstrumentClause {
   createdAt    DateTime             @default(now())
 
   instrument   CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  previousInComparisons ClauseComparison[] @relation("ClauseComparisonPrevious")
+  currentInComparisons  ClauseComparison[] @relation("ClauseComparisonCurrent")
 
   @@index([instrumentId])
+}
+
+enum ComparisonStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ClauseChangeType {
+  UNCHANGED
+  MODIFIED
+  ADDED
+  REMOVED
+  RENAMED
+  MOVED
+}
+
+model InstrumentComparison {
+  id                   String           @id @default(cuid())
+  tenantId             String
+  previousInstrumentId String
+  currentInstrumentId  String
+  status               ComparisonStatus @default(PENDING)
+  summary              Json?
+  modelVersion         String           @default("heuristic-v1")
+  createdAt            DateTime         @default(now())
+  completedAt          DateTime?
+
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  previousInstrument CollectiveInstrument @relation("ComparisonPrevious", fields: [previousInstrumentId], references: [id], onDelete: Cascade)
+  currentInstrument  CollectiveInstrument @relation("ComparisonCurrent", fields: [currentInstrumentId], references: [id], onDelete: Cascade)
+  clauseComparisons  ClauseComparison[]
+
+  @@index([tenantId, createdAt])
+  @@index([previousInstrumentId])
+  @@index([currentInstrumentId])
+}
+
+model ClauseComparison {
+  id               String           @id @default(cuid())
+  comparisonId     String
+  previousClauseId String?
+  currentClauseId  String?
+  changeType       ClauseChangeType
+  similarity       Float?
+  summary          String?
+  structuredDiff   Json?
+  createdAt        DateTime         @default(now())
+
+  comparison     InstrumentComparison @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  previousClause InstrumentClause?    @relation("ClauseComparisonPrevious", fields: [previousClauseId], references: [id], onDelete: SetNull)
+  currentClause  InstrumentClause?    @relation("ClauseComparisonCurrent", fields: [currentClauseId], references: [id], onDelete: SetNull)
+
+  @@index([comparisonId, changeType])
 }
 
 model Source {
