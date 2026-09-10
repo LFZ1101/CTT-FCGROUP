@@ -1,8 +1,8 @@
 # Estado atual — CCT Intelligence
 
 **Data:** 2026-09-10  
-**Branch ativa:** `cursor/cct-intelligence-collaborative-network-310a`  
-**Base preservada:** fases 3A–3V + feedback P0 + Base Colaborativa
+**Branch ativa:** `cursor/cct-intelligence-import-csv-310a`  
+**Base preservada:** fases 3A–3V + feedback P0 + Base Colaborativa + import CSV
 
 ## Promessa de valor (pós-feedback)
 
@@ -12,9 +12,9 @@ Reduzir a chance de uma alteração trabalhista passar despercebida — inclusiv
 
 | Módulo | Status | Nota |
 |---|---|---|
-| Company CRUD | PARTIAL | Sem import CSV ainda |
+| Company CRUD | DONE_NEEDS_TESTS | + import CSV com preview |
 | Union CRUD | DONE_NEEDS_TESTS | Detalhe + grupo sindical na UI |
-| CompanyUnion | PARTIAL→estendido | status/confidence/validação |
+| CompanyUnion | DONE_NEEDS_TESTS | status/confidence/validação + import CSV |
 | Sources + monitoring | DONE_NEEDS_TESTS | Preservado |
 | Mediador adapter | DONE_NEEDS_TESTS | Preservado (CAPTCHA = BLOCKED) |
 | Pipeline documental | DONE_NEEDS_TESTS | Preservado; reutilizado pela rede |
@@ -27,7 +27,7 @@ Reduzir a chance de uma alteração trabalhista passar despercebida — inclusiv
 | Vigilância / cobertura | DONE_NEEDS_TESTS | + overlay colaborativo |
 | Deadlines | DONE_NEEDS_TESTS | P0 |
 | **Base Colaborativa** | **DONE_NEEDS_TESTS** | Contribuição, publicação, pedidos, match hash |
-| Import vínculos CSV | NOT_STARTED | Próximo |
+| Import vínculos CSV | DONE_NEEDS_TESTS | `/empresas/importar` |
 | Funcionários/folha oficial | NOT_STARTED | P2 |
 
 ## Endpoints novos (colaborativo)

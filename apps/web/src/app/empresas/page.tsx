@@ -66,9 +66,14 @@ export default function Empresas() {
           title="Empresas monitoradas"
           description="Base para enquadramento, instrumentos aplicáveis, alertas e tarefas."
           action={
-            <button className="primary" onClick={() => setOpen(true)}>
-              + Nova empresa
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link className="ghost" href="/empresas/importar">
+                Importar CSV
+              </Link>
+              <button className="primary" onClick={() => setOpen(true)}>
+                + Nova empresa
+              </button>
+            </div>
           }
         />
         <div className="toolbar">
