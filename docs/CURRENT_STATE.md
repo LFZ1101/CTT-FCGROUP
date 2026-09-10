@@ -23,6 +23,8 @@ Auditoria baseada no **código real** (branch `cursor/cct-intelligence-autonomou
 | Auth JWT + bootstrap tenant | DONE_NEEDS_TESTS | Sim | Não | E2E auth |
 | RolesGuard / RBAC fino | DONE_NEEDS_TESTS | Sim | Sim (unit) | E2E HTTP |
 | Multi-tenancy (queries) | DONE_NEEDS_TESTS | Sim | Parcial | E2E isolamento |
+| FK ownership cross-tenant | DONE_NEEDS_TESTS | Sim | Sim (unit) | Ampliar a mais módulos |
+| Rate limit login | DONE_NEEDS_TESTS | Sim | Sim | Redis em cluster |
 | Empresas + vínculo sindicato | DONE_NEEDS_TESTS | Sim | Não | Testes API |
 | Sindicatos CRUD | DONE_NEEDS_TESTS | Sim | Não | E2E |
 | Fontes + enable/disable | DONE_NEEDS_TESTS | Sim | Não | E2E |
