@@ -36,15 +36,20 @@ Auditoria da base `cct-intelligence-phase2.zip` antes da evolução para Fase 3.
 - Testes unitários básicos (MIME/scrape/hash).
 - README e docs de Fase 3 atualizados.
 
-## Dívida restante (priorizada)
-1. Extrair scraper compartilhado (`packages/shared`) e fazer API apenas enfileirar monitoramento.
-2. RolesGuard + matriz RBAC efetiva.
-3. Gravação sistemática de `AuditLog`.
-4. Login com `tenantSlug` ou e-mail global único.
-5. Validação cross-tenant de FKs em alerts/tasks/sources.
-6. Migrations Prisma versionadas (substituir `db push` em CI).
-7. Lint/ESLint + testes de integração multi-tenant.
-8. Extração de texto por página, classificação e cláusulas (Fase 3B+).
+## Dívida restante (priorizada) — atualizado 2026-09-10
+
+1. ~~Extrair scraper / API apenas enfileira monitoramento.~~ **Feito (3L)** — API enfileira `source-monitoring`; scrape só no worker.
+2. ~~RolesGuard + matriz RBAC efetiva.~~ **Feito**
+3. ~~Gravação sistemática de `AuditLog`.~~ **Parcial** — validação, RAG, comparação, review documental, etc.
+4. ~~Login com `tenantSlug` ou e-mail global único~~ **Feito (3O)** — slug no login; 409 se ambíguo; Redis RL.
+5. ~~Validação cross-tenant de FKs em alerts/tasks/sources.~~ **Feito** (TenantOwnershipService).
+6. ~~Migrations Prisma versionadas.~~ **Baseline + migrate deploy no CI.**
+7. ~~Testes de integração multi-tenant.~~ **Feito** (Postgres integration); E2E HTTP bearer ainda pendente.
+8. ~~Extração / classificação / cláusulas.~~ **Feito** (heurística v1).
+
+## Pós-auditoria (Fases 3A–3L)
+
+- Pipeline completo até RAG/busca + RBAC + rate limit + review documental + CI.
 
 ## Riscos
 - Coletor HTML genérico falha em sites JS/CAPTCHA/anti-bot.

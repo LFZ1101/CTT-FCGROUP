@@ -17,13 +17,23 @@ import {
 } from '@aws-sdk/client-s3';
 import FileType from 'file-type';
 import { normalizeUrl, extractCandidateLinks } from './scrape.js';
+import {
+  extractMediadorLinks,
+  isMediadorUrl,
+  mergeCandidates,
+  fetchMediadorPage,
+  detectMediadorBlock,
+} from './adapters/mediador.js';
+import { beforeMediadorFetch, markMediadorFetch } from './adapters/mediador-gate.js';
 import { extensionForMime, isAllowedMime } from './mime.js';
 import { extractPages } from './extract.js';
+import { assessExtraction, maybeApplyOcr } from './ocr.js';
 import { classifyDocument } from './classify.js';
 import { segmentClauses } from './segment.js';
 import { extractMetadata } from './metadata.js';
 import { promoteToInstrument } from './promote.js';
 import { indexChunksForDocument, indexChunksForInstrument } from './chunks.js';
+import { workerLog } from './log.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -89,12 +99,85 @@ async function monitorSource(sourceId: string) {
   });
 
   try {
-    const response = await fetch(source.url, {
-      redirect: 'follow',
-      headers: { 'user-agent': 'CCT-Intelligence-Monitor/1.0 (+compliance; contact-admin)' },
-    });
-    const html = await response.text();
-    const links = extractCandidateLinks(html, source.url);
+    const isMediador = source.type === 'MEDIADOR_MTE' || isMediadorUrl(source.url);
+
+    if (isMediador) {
+      const gate = await beforeMediadorFetch(source.url);
+      if (!gate.allow) {
+        await prisma.source.update({
+          where: { id: sourceId },
+          data: { lastCheckedAt: new Date() },
+        });
+        await prisma.sourceCheck.update({
+          where: { id: check.id },
+          data: {
+            status: 'BLOCKED',
+            httpStatus: null,
+            documentsFound: 0,
+            message: `circuit_open até ${new Date(gate.openUntil).toISOString()}`,
+            finishedAt: new Date(),
+          },
+        });
+        workerLog('warn', 'mediador_circuit_open', {
+          sourceId,
+          openUntil: gate.openUntil,
+        });
+        return { sourceId, blocked: true, reason: 'circuit_open' };
+      }
+    }
+
+    const response = isMediador
+      ? await fetchMediadorPage(source.url)
+      : await (async () => {
+          const res = await fetch(source.url, {
+            redirect: 'follow',
+            headers: { 'user-agent': 'CCT-Intelligence-Monitor/1.0 (+compliance; contact-admin)' },
+          });
+          const html = await res.text();
+          const block = detectMediadorBlock(html, res.status);
+          return {
+            ok: res.ok && !block.blocked,
+            status: res.status,
+            finalUrl: res.url || source.url,
+            html,
+            blocked: block.blocked,
+            reason: block.reason,
+          };
+        })();
+
+    if (isMediador) {
+      // Circuit só por challenge/bloqueio real — HTTP error/rede não abre o breaker.
+      markMediadorFetch(source.url, Boolean(response.blocked));
+    }
+
+    if (response.blocked || !response.ok) {
+      await prisma.source.update({
+        where: { id: sourceId },
+        data: { lastCheckedAt: new Date() },
+      });
+      await prisma.sourceCheck.update({
+        where: { id: check.id },
+        data: {
+          status: response.blocked ? 'BLOCKED' : 'HTTP_ERROR',
+          httpStatus: response.status || null,
+          documentsFound: 0,
+          message: response.reason || 'Falha ao consultar fonte',
+          finishedAt: new Date(),
+        },
+      });
+      return {
+        sourceId,
+        blocked: response.blocked,
+        reason: response.reason,
+        httpStatus: response.status,
+      };
+    }
+
+    const html = response.html;
+    const baseUrl = response.finalUrl || source.url;
+    const generic = extractCandidateLinks(html, baseUrl);
+    const mediadorExtra = isMediador ? extractMediadorLinks(html, baseUrl) : [];
+    const links = mergeCandidates(generic, mediadorExtra);
     let newDocs = 0;
 
     for (const link of links) {
@@ -120,7 +203,12 @@ async function monitorSource(sourceId: string) {
           contentType: link.contentType || null,
           documentHash: createHash('sha256').update(normalizedUrl).digest('hex'),
           processingStatus: DocumentProcessingStatus.DISCOVERED,
-          metadata: { discoveredFrom: source.url },
+          metadata: {
+            discoveredFrom: source.url,
+            ...(link.registration ? { registration: link.registration } : {}),
+            ...(link.requestNumber ? { requestNumber: link.requestNumber } : {}),
+            adapter: isMediador ? 'mediador-v1' : 'generic-html-v1',
+          },
         },
       });
       newDocs++;
@@ -312,8 +400,13 @@ async function parseDocument(documentId: string, tenantId: string) {
   try {
     await ensureBucket();
     const buffer = await readObject(doc.storageKey);
-    const pages = await extractPages(buffer, doc.mimeType);
+    let pages = await extractPages(buffer, doc.mimeType);
+    const assessment = assessExtraction(pages);
+    const ocrResult = await maybeApplyOcr(buffer, pages, assessment);
+    pages = ocrResult.pages;
     const extractedText = pages.map((p) => p.text).join('\n\n').trim();
+    const postOcrAssessment = assessExtraction(pages);
+    const stillNeedsOcr = postOcrAssessment.needsOcr;
 
     await prisma.$transaction([
       prisma.documentPage.deleteMany({ where: { discoveredDocumentId: doc.id, tenantId } }),
@@ -333,6 +426,15 @@ async function parseDocument(documentId: string, tenantId: string) {
           extractedText,
           pageCount: pages.length,
           parsedAt: new Date(),
+          metadata: {
+            ...((doc.metadata as Record<string, unknown>) || {}),
+            ocr: {
+              ...ocrResult.ocr,
+              needsOcr: stillNeedsOcr || assessment.needsOcr,
+              initial: assessment,
+              after: postOcrAssessment,
+            },
+          },
         },
       }),
     ]);
@@ -354,7 +456,8 @@ async function parseDocument(documentId: string, tenantId: string) {
       classification.confidence < 0.8 ||
       classification.documentClass === DocumentClass.UNKNOWN ||
       classification.documentClass === DocumentClass.IRRELEVANT ||
-      weakMetadata;
+      weakMetadata ||
+      stillNeedsOcr;
 
     await prisma.discoveredDocument.update({
       where: { id: doc.id },
@@ -368,6 +471,12 @@ async function parseDocument(documentId: string, tenantId: string) {
         needsReview,
         metadata: {
           ...((doc.metadata as Record<string, unknown>) || {}),
+          ocr: {
+            ...ocrResult.ocr,
+            needsOcr: stillNeedsOcr || assessment.needsOcr,
+            initial: assessment,
+            after: postOcrAssessment,
+          },
           classificationEvidence: classification.evidence,
           structured: {
             title: metadata.title,
@@ -468,7 +577,19 @@ async function parseDocument(documentId: string, tenantId: string) {
 new Worker(
   'source-monitoring',
   async (job) => {
-    if (job.name === 'check-source') await monitorSource(job.data.sourceId);
+    workerLog('info', 'job_start', { queue: 'source-monitoring', jobId: job.id, name: job.name });
+    try {
+      if (job.name === 'check-source') await monitorSource(job.data.sourceId);
+      workerLog('info', 'job_ok', { queue: 'source-monitoring', jobId: job.id, name: job.name });
+    } catch (err) {
+      workerLog('error', 'job_fail', {
+        queue: 'source-monitoring',
+        jobId: job.id,
+        name: job.name,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
   },
   { connection, concurrency: Number(process.env.MONITOR_CONCURRENCY || 3) },
 );
@@ -476,8 +597,25 @@ new Worker(
 new Worker(
   'document-download',
   async (job) => {
-    if (job.name === 'download-document') {
-      await downloadDocument(job.data.documentId, job.data.tenantId);
+    workerLog('info', 'job_start', {
+      queue: 'document-download',
+      jobId: job.id,
+      name: job.name,
+      tenantId: job.data.tenantId,
+      documentId: job.data.documentId,
+    });
+    try {
+      if (job.name === 'download-document') {
+        await downloadDocument(job.data.documentId, job.data.tenantId);
+      }
+      workerLog('info', 'job_ok', { queue: 'document-download', jobId: job.id });
+    } catch (err) {
+      workerLog('error', 'job_fail', {
+        queue: 'document-download',
+        jobId: job.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
   },
   { connection, concurrency: Number(process.env.DOWNLOAD_CONCURRENCY || 2) },
@@ -486,8 +624,25 @@ new Worker(
 new Worker(
   'document-parse',
   async (job) => {
-    if (job.name === 'parse-document') {
-      await parseDocument(job.data.documentId, job.data.tenantId);
+    workerLog('info', 'job_start', {
+      queue: 'document-parse',
+      jobId: job.id,
+      name: job.name,
+      tenantId: job.data.tenantId,
+      documentId: job.data.documentId,
+    });
+    try {
+      if (job.name === 'parse-document') {
+        await parseDocument(job.data.documentId, job.data.tenantId);
+      }
+      workerLog('info', 'job_ok', { queue: 'document-parse', jobId: job.id });
+    } catch (err) {
+      workerLog('error', 'job_fail', {
+        queue: 'document-parse',
+        jobId: job.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
   },
   { connection, concurrency: Number(process.env.PARSE_CONCURRENCY || 2) },

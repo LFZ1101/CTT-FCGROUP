@@ -1,39 +1,189 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  OnModuleDestroy,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Redis } from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
 import { BootstrapDto, LoginDto } from './auth.dto';
 import * as bcrypt from 'bcryptjs';
+import { RedisRateLimiter } from '../common/security/redis-rate-limiter';
 
 @Injectable()
-export class AuthService {
-  constructor(private readonly prisma: PrismaService, private readonly jwt: JwtService) {}
+export class AuthService implements OnModuleDestroy {
+  private readonly redis: Redis | null;
+  private readonly loginLimiter: RedisRateLimiter;
 
-  private slugify(value: string) {
-    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+  ) {
+    const url = process.env.REDIS_URL;
+    if (url) {
+      this.redis = new Redis(url, {
+        maxRetriesPerRequest: 1,
+        enableReadyCheck: false,
+        lazyConnect: true,
+        enableOfflineQueue: false,
+        connectTimeout: 1500,
+        retryStrategy: () => null,
+      });
+    } else {
+      this.redis = null;
+    }
+    this.loginLimiter = new RedisRateLimiter(this.redis, 10, 15 * 60 * 1000, 'rl:login:');
   }
 
-  async bootstrap(dto: BootstrapDto) {
-    if (await this.prisma.user.findFirst({ where: { email: dto.email } })) throw new BadRequestException('E-mail já cadastrado.');
+  async onModuleDestroy() {
+    if (this.redis) {
+      try {
+        await this.redis.quit();
+      } catch {
+        this.redis.disconnect();
+      }
+    }
+  }
+
+  private slugify(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  /** Bootstrap aberto em dev/CI; em produção exige BOOTSTRAP_TOKEN (header x-bootstrap-token). */
+  async bootstrap(dto: BootstrapDto, bootstrapToken?: string) {
+    const required = process.env.BOOTSTRAP_TOKEN;
+    if (required && bootstrapToken !== required) {
+      throw new ForbiddenException('Bootstrap desabilitado sem token válido.');
+    }
+    if (!required && process.env.NODE_ENV === 'production' && process.env.BOOTSTRAP_OPEN !== 'true') {
+      throw new ForbiddenException(
+        'Bootstrap bloqueado em produção. Defina BOOTSTRAP_TOKEN ou BOOTSTRAP_OPEN=true.',
+      );
+    }
+
+    const email = dto.email.trim().toLowerCase();
     const passwordHash = await bcrypt.hash(dto.password, 12);
     let slug = this.slugify(dto.tenantName) || 'escritorio';
-    if (await this.prisma.tenant.findUnique({ where: { slug } })) slug = `${slug}-${Date.now().toString().slice(-5)}`;
-    const tenant = await this.prisma.tenant.create({
-      data: { name: dto.tenantName, slug, users: { create: { name: dto.name, email: dto.email, passwordHash, role: 'OWNER' } } },
-      include: { users: true },
-    });
-    const user = tenant.users[0];
-    return this.issue(user);
+    if (await this.prisma.tenant.findUnique({ where: { slug } })) {
+      slug = `${slug}-${Date.now().toString().slice(-5)}`;
+    }
+    try {
+      const tenant = await this.prisma.tenant.create({
+        data: {
+          name: dto.tenantName,
+          slug,
+          users: {
+            create: { name: dto.name, email, passwordHash, role: 'OWNER' },
+          },
+        },
+        include: { users: true },
+      });
+      const user = tenant.users[0];
+      return this.issue(user, tenant);
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new ConflictException('Slug ou e-mail já utilizado neste workspace.');
+      }
+      throw err;
+    }
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findFirst({ where: { email: dto.email, active: true }, include: { tenant: true } });
-    if (!user?.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) throw new UnauthorizedException('E-mail ou senha inválidos.');
-    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-    return this.issue(user);
+    const email = dto.email.trim().toLowerCase();
+    const tenantSlug = dto.tenantSlug?.trim().toLowerCase() || '';
+    const rateKey = `${tenantSlug || 'any'}:${email}`;
+
+    // Limite por e-mail (anti-bypass via tenantSlug) + bucket específico slug:email
+    if (!(await this.loginLimiter.try(`email:${email}`))) {
+      throw new HttpException(
+        'Muitas tentativas de login. Aguarde alguns minutos.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    if (!(await this.loginLimiter.try(rateKey))) {
+      throw new HttpException(
+        'Muitas tentativas de login. Aguarde alguns minutos.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    let user:
+      | (Awaited<ReturnType<typeof this.prisma.user.findFirst>> & {
+          tenant?: { id: string; slug: string; name: string };
+        })
+      | null = null;
+
+    if (tenantSlug) {
+      user = await this.prisma.user.findFirst({
+        where: { email, active: true, tenant: { slug: tenantSlug } },
+        include: { tenant: { select: { id: true, slug: true, name: true } } },
+      });
+    } else {
+      const matches = await this.prisma.user.findMany({
+        where: { email, active: true },
+        include: { tenant: { select: { id: true, slug: true, name: true } } },
+        take: 8,
+      });
+      if (matches.length > 1) {
+        throw new ConflictException(
+          'E-mail existe em mais de um workspace. Informe o campo tenantSlug.',
+        );
+      }
+      user = matches[0] || null;
+    }
+
+    if (!user?.passwordHash || !(await bcrypt.compare(dto.password, user.passwordHash))) {
+      throw new UnauthorizedException('E-mail ou senha inválidos.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return this.issue(user, user.tenant);
   }
 
-  private issue(user: { id: string; tenantId: string; email: string; name: string; role: string }) {
-    const accessToken = this.jwt.sign({ sub: user.id, tenantId: user.tenantId, email: user.email, role: user.role }, { expiresIn: '12h' });
-    return { accessToken, user: { id: user.id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId } };
+  private issue(
+    user: {
+      id: string;
+      tenantId: string;
+      email: string;
+      name: string;
+      role: string;
+    },
+    tenant?: { slug: string; name: string } | null,
+  ) {
+    const accessToken = this.jwt.sign(
+      {
+        sub: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+        role: user.role,
+        tenantSlug: tenant?.slug,
+      },
+      { expiresIn: '12h' },
+    );
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        tenantSlug: tenant?.slug || null,
+        tenantName: tenant?.name || null,
+      },
+    };
   }
 }

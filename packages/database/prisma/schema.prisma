@@ -78,6 +78,8 @@ model Tenant {
   documentClauses DocumentClause[]
   instrumentComparisons InstrumentComparison[]
   documentChunks DocumentChunk[]
+  pushSubscriptions PushSubscription[]
+  notificationPreferences NotificationPreference[]
 }
 
 model User {
@@ -96,6 +98,8 @@ model User {
   validations InstrumentValidation[]
   tasks     Task[]   @relation("TaskAssignee")
   auditLogs AuditLog[]
+  pushSubscriptions PushSubscription[]
+  notificationPreference NotificationPreference?
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -355,6 +359,43 @@ model Alert {
   @@index([tenantId, readAt])
 }
 
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  endpoint  String
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, endpoint])
+  @@index([tenantId, userId])
+}
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  tenantId       String
+  userId         String   @unique
+  emailEnabled   Boolean  @default(true)
+  pushEnabled    Boolean  @default(true)
+  /// INFO | WARNING | CRITICAL — severidade mínima para receber
+  minSeverity    String   @default("WARNING")
+  mutedTypes     String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+}
+
 model Task {
   id          String     @id @default(cuid())
   tenantId    String
@@ -581,7 +622,7 @@ model DocumentClause {
   @@index([tenantId, category])
 }
 
-/// Chunks de RAG (prioridade: cláusula). Embedding JSON opcional para futuro pgvector/OpenAI.
+/// Chunks de RAG (prioridade: cláusula). Embedding JSON + coluna nativa pgvector.
 model DocumentChunk {
   id                   String   @id @default(cuid())
   tenantId             String
@@ -596,7 +637,10 @@ model DocumentChunk {
   category             String?
   text                 String
   metadata             Json?
+  /// Embedding hashing-v1 (JSON) — sempre preenchido.
   embedding            Json?
+  /// Coluna nativa pgvector (256). Preenchida quando a extensão está disponível.
+  embeddingVec         Unsupported("vector(256)")?
   modelVersion         String   @default("heuristic-v1")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

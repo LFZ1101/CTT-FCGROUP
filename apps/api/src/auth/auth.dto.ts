@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class BootstrapDto {
   @IsString() @MinLength(2) tenantName!: string;
@@ -10,4 +10,9 @@ export class BootstrapDto {
 export class LoginDto {
   @IsEmail() email!: string;
   @IsString() @MinLength(8) password!: string;
+  /** Slug do workspace; obrigatório se o e-mail existir em mais de um tenant. */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  tenantSlug?: string;
 }

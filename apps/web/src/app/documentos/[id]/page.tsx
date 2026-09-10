@@ -43,6 +43,14 @@ type Doc = {
     structured?: Record<string, unknown>;
     fieldEvidence?: FieldEvidence[];
     classificationEvidence?: Array<{ page?: number | null; snippet?: string; pattern?: string }>;
+    ocr?: {
+      needsOcr?: boolean;
+      attempted?: boolean;
+      applied?: boolean;
+      engine?: string | null;
+      reason?: string;
+      pagesOcrd?: number;
+    };
   } | null;
   pages?: Page[];
   clauses?: Clause[];
@@ -88,9 +96,70 @@ export default function DocumentoPage() {
     }
   };
 
+  const review = async (decision: 'APPROVE_METADATA' | 'NEEDS_CHANGES') => {
+    setBusy(true);
+    try {
+      await api(`/documents/${params.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ decision }),
+      });
+      await load();
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao registrar revisão');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openFile = async () => {
+    try {
+      const result = await api<{ url: string }>(`/documents/${params.id}/signed-url`);
+      window.open(result.url, '_blank');
+    } catch (e: any) {
+      setError(e?.message || 'Arquivo ainda não disponível no storage');
+    }
+  };
+
   const page = doc?.pages?.find((p) => p.pageNumber === activePage);
   const structured = doc?.metadata?.structured || {};
   const fieldEvidence = doc?.metadata?.fieldEvidence || [];
+  const ocrMeta = doc?.metadata?.ocr;
+  const humanReview = (doc?.metadata as any)?.humanReview as
+    | { decision?: string; at?: string; notes?: string | null }
+    | undefined;
+
+  const checklist = [
+    {
+      ok: !!doc?.documentClass && doc.documentClass !== 'UNKNOWN',
+      label: 'Classe documental identificada',
+    },
+    {
+      ok: (doc?.pageCount || 0) > 0 || (doc?.pages?.length || 0) > 0,
+      label: 'Texto por página disponível',
+    },
+    {
+      ok: !ocrMeta?.needsOcr || !!ocrMeta?.applied,
+      label: ocrMeta?.applied
+        ? 'OCR aplicado com ganho textual'
+        : 'Texto suficiente (OCR não pendente)',
+    },
+    {
+      ok: fieldEvidence.length > 0,
+      label: 'Metadados com evidência',
+    },
+    {
+      ok: (doc?.clauses?.length || 0) > 0,
+      label: 'Cláusulas segmentadas',
+    },
+    {
+      ok: !!(doc?.instrument?.id || doc?.instrumentId),
+      label: 'Promovido a instrumento coletivo',
+    },
+    {
+      ok: humanReview?.decision === 'APPROVE_METADATA',
+      label: 'Revisão humana do artefato registrada',
+    },
+  ];
 
   return (
     <Shell title="Documento">
@@ -100,9 +169,18 @@ export default function DocumentoPage() {
           title={doc?.title || 'Revisão documental'}
           description="Texto por página, metadados com evidência, classificação e cláusulas segmentadas."
         />
-        {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
+        {error && doc ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
         {!doc ? (
-          <div className="empty">Carregando...</div>
+          error ? (
+            <div className="empty">
+              <p>{error}</p>
+              <button className="secondary" type="button" onClick={() => void load()}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : (
+            <div className="empty">Carregando...</div>
+          )
         ) : (
           <>
             <div className="toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -114,11 +192,35 @@ export default function DocumentoPage() {
               <span className={`badge ${doc.needsReview ? 'warn' : 'ok'}`}>
                 {doc.needsReview ? 'Revisão necessária' : 'Revisão opcional'}
               </span>
+              {ocrMeta?.needsOcr ? (
+                <span className={`badge ${ocrMeta.applied ? 'ok' : 'warn'}`}>
+                  {ocrMeta.applied
+                    ? `OCR ok${ocrMeta.engine ? ` · ${ocrMeta.engine}` : ''}`
+                    : `OCR pendente${ocrMeta.reason ? ` · ${ocrMeta.reason}` : ''}`}
+                </span>
+              ) : null}
               <span className="badge">{doc.pageCount || 0} páginas</span>
               <span className="badge">{doc.clauses?.length || 0} cláusulas</span>
               <span className="badge">{fieldEvidence.length} metadados</span>
               <button className="secondary" onClick={parse} disabled={busy}>
                 {busy ? 'Processando...' : 'Reprocessar parse'}
+              </button>
+              <button className="secondary" onClick={openFile} disabled={busy}>
+                Abrir arquivo
+              </button>
+              <button
+                className="primary"
+                onClick={() => review('APPROVE_METADATA')}
+                disabled={busy}
+              >
+                Aprovar metadados
+              </button>
+              <button
+                className="secondary"
+                onClick={() => review('NEEDS_CHANGES')}
+                disabled={busy}
+              >
+                Marcar ajustes
               </button>
               <a className="secondary" href={doc.url} target="_blank" rel="noreferrer">
                 Origem
@@ -135,6 +237,29 @@ export default function DocumentoPage() {
             {doc.failureReason ? (
               <div className="empty" style={{ color: 'crimson' }}>{doc.failureReason}</div>
             ) : null}
+
+            <section className="panel" style={{ marginBottom: 14 }}>
+              <div className="panelhead">
+                <div>
+                  <span className="eyebrow">CHECKLIST</span>
+                  <h2>Revisão documental</h2>
+                </div>
+                {humanReview?.decision ? (
+                  <span className={`badge ${humanReview.decision === 'APPROVE_METADATA' ? 'ok' : 'warn'}`}>
+                    {humanReview.decision}
+                    {humanReview.at ? ` · ${new Date(humanReview.at).toLocaleString('pt-BR')}` : ''}
+                  </span>
+                ) : null}
+              </div>
+              <div className="attention" style={{ padding: 14 }}>
+                {checklist.map((item) => (
+                  <div className="attn" key={item.label}>
+                    <strong>{item.ok ? '✓' : '○'} {item.label}</strong>
+                    <p>{item.ok ? 'Concluído' : 'Pendente nesta revisão'}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
 
             {(doc.clauses?.length || doc.pages?.length) ? (
               <AskPanel documentId={doc.id} />

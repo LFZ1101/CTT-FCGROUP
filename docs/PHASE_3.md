@@ -116,8 +116,99 @@
 - UI `/auditoria` + painel `AuditTrail` em documento/instrumento.
 - Worker reindexa chunks já com embedding.
 
-## Próximo (3K+)
+## 3K — Hardening operacional + busca + alertas/tarefas (entregue nesta execução)
 
-- pgvector nativo (substituir JSON embedding)
-- Diff semântico entre versões
-- Notificações/alertas operacionais avançados
+- RBAC estendido a unions/sources/alerts/tasks/monitoring/dashboard.
+- CRUD sindicatos (PATCH/DELETE) e fontes (PATCH enable).
+- Busca documental `GET /documents/search?q=` + UI `/documentos`.
+- `POST /alerts/scan-expiring` e `POST /tasks/sync-review`.
+- Dashboard com pipeline/classes/vigências.
+- Adaptador Mediador heurístico no worker.
+- Health check com Postgres/Redis.
+- Dockerfiles api/web/worker + docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT.
+- Testes: RolesGuard, tenant-scope, search ranking, mediador adapter.
+
+## 3L — Isolamento multi-tenant, migrations, monitoramento unificado, revisão UI (entregue)
+
+- API de monitoramento **apenas enfileira** `source-monitoring` (remove scrape duplicado).
+- Testes de integração Postgres: TENANT A ↛ TENANT B (empresas, instrumentos, docs, alertas, fontes, busca).
+- Migration baseline Prisma `20260910120000_init` + `migrate deploy` / CI.
+- GitHub Actions CI (Postgres + Redis): generate, migrate, typecheck, test, build.
+- UI revisão documental: checklist, aprovar metadados / marcar ajustes (`POST /documents/:id/review` + AuditLog).
+- Monitoramento UI informa enfileiramento assíncrono.
+
+## 3M — Isolamento HTTP/API, Mediador real, pgvector opcional
+
+- Testes integração multi-tenant (Prisma + AuthService/guards) + packaging migrations + review persistence
+- `reflect-metadata` no bootstrap; Redis quit no destroy (Documents/Monitoring)
+- E2E smoke script + step no CI
+- Adaptador Mediador com fetch, detecção de bloqueio, fixtures e ADR 0002
+- pgvector opcional (`embeddingVec`), dual-write, boost no RAG; compose/CI com `pgvector/pgvector:pg16`; ADR 0003
+
+## 3N — Impacto em folha + notificações e-mail (entregue)
+
+- Motor heurístico `payroll-heuristic-v1` + `GET /payroll-impact/comparisons/:comparisonId`
+- Painel de fatores na UI `/instrumentos/comparar`
+- SMTP opcional (`MailService`) + `POST /notifications/alerts/email`
+- `scan-expiring` notifica automaticamente WARNING/CRITICAL (não falha o scan se SMTP cair)
+- Botão “E-mail” na central de alertas
+
+## 3O — Login por tenantSlug + rate limit Redis (entregue)
+
+- `POST /auth/login` aceita `tenantSlug`; 409 se e-mail ambíguo sem slug
+- Bootstrap permite mesmo e-mail em tenants distintos; resposta inclui `user.tenantSlug`
+- JWT e UI de login carregam slug do workspace
+- `RedisRateLimiter` (INCR/PEXPIRE) com fallback `MemoryRateLimiter`
+- E2E smoke cobre login com slug; testes unitários de ambiguidade
+
+## 3P — OCR opcional para PDFs escaneados (entregue)
+
+- `assessExtraction` detecta baixa densidade textual / páginas vazias
+- `maybeApplyOcr` com `pdftoppm` + `tesseract` quando `OCR_ENABLED=true`
+- Sem binários/OCR: parse segue, `metadata.ocr` + `needsReview`
+- UI do documento: badge e checklist de OCR; ADR 0004
+- Dockerfile do worker inclui poppler/tesseract (por+eng)
+
+## 3Q — Observabilidade + resiliência Mediador (entregue)
+
+- `x-request-id`, logs JSON HTTP, `GET /health/metrics`, Sentry opcional (`SENTRY_DSN`)
+- Exception filter com `requestId` nas respostas de erro
+- Worker: logs estruturados por job (`jobId`, fila, tenant)
+- Mediador: retry/backoff em 429/502/503/rede; ADR 0005
+
+## 3R — Webhooks de alerta + gate Mediador (entregue)
+
+- Fan-out e-mail + webhook (`NOTIFY_WEBHOOK_URL`, HMAC opcional)
+- Circuit breaker / intervalo mínimo no worker Mediador
+- `MEDIADOR_MODE=fixture` para staging offline; ADR 0006
+
+## 3S — Web Push VAPID (entregue)
+
+- Modelo `PushSubscription` + migration
+- Endpoints subscribe/unsubscribe + chave pública VAPID
+- Fan-out push em `notifyAlert`; SW + UI em `/alertas`; ADR 0007
+
+## 3T — Preferências de notificação (entregue)
+
+- Modelo `NotificationPreference` (email/push, minSeverity, mutedTypes)
+- `GET|PUT /notifications/preferences` + UI em `/alertas`
+- Fan-out respeita preferências; ADR 0008
+
+## 3U — OpenTelemetry lite (entregue)
+
+- `traceparent` W3C + spans HTTP + export OTLP JSON opcional
+- Health `otel` snapshot; ADR 0009
+
+## 3V — Mediador anti-bot + gate Redis (entregue)
+
+- HTTP stealth (cookies/referer/Sec-Fetch)
+- Playwright opcional (`MEDIADOR_BROWSER`) sem dependência fixa
+- Gate Mediador com Redis compartilhado (opt-in `MEDIADOR_GATE_REDIS`); ADR 0010
+- E2E smoke com isolamento cross-tenant
+
+## Próximo (opcional / fora do núcleo)
+
+- OTel SDK completo / auto-instrumentation
+- Build/push de imagens em registry
+- Auditoria a11y formal (axe) — /alertas já tem live region + labels
+- Imagem worker Debian com Playwright pré-instalado

@@ -13,8 +13,10 @@
     "db:generate": "pnpm --filter @cct/database prisma generate",
     "db:push": "pnpm --filter @cct/database prisma db push",
     "db:migrate": "pnpm --filter @cct/database prisma migrate dev",
+    "db:migrate:deploy": "pnpm --filter @cct/database prisma migrate deploy",
     "db:seed": "pnpm --filter @cct/database seed",
-    "typecheck": "pnpm -r --if-present exec tsc --noEmit",
+    "typecheck": "pnpm --filter @cct/api exec tsc --noEmit && pnpm --filter @cct/worker exec tsc --noEmit && pnpm --filter @cct/web exec tsc --noEmit",
+    "lint": "pnpm typecheck",
     "test": "pnpm --filter @cct/api test && pnpm --filter @cct/worker test"
   }
 }

@@ -1,5 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HealthController } from './common/health.controller';
+import { RequestIdMiddleware } from './common/observability/request-id.middleware';
+import { LoggingInterceptor } from './common/observability/logging.interceptor';
+import { ObservabilityExceptionFilter } from './common/observability/exception.filter';
 import { DatabaseModule } from './database/database.module';
 import { StorageModule } from './storage/storage.module';
 import { AuthModule } from './auth/auth.module';
@@ -15,6 +19,8 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { ComparisonsModule } from './modules/comparisons/comparisons.module';
 import { RagModule } from './modules/rag/rag.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,7 +39,17 @@ import { AuditModule } from './modules/audit/audit.module';
     ComparisonsModule,
     RagModule,
     AuditModule,
+    PayrollModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
+  providers: [
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+    { provide: APP_FILTER, useClass: ObservabilityExceptionFilter },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware).forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

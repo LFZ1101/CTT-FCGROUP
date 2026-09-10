@@ -145,10 +145,10 @@ Usuário cria escritório, importa empresas, cadastra sindicatos/fontes e acompa
 - [x] Scheduler/filas (BullMQ + worker)
 - [x] Storage S3-compatible / MinIO
 - [x] Download pipeline (hash/MIME/versão)
-- [ ] Adaptador Mediador dedicado
+- [x] Adaptador Mediador dedicado (HTTP stealth + browser opcional; live anti-bot ainda limitado)
 - [ ] Crawlers sindicais específicos
-- [ ] Parser PDF / páginas
+- [x] Parser PDF / páginas (texto embutido + OCR opcional para escaneados)
 - [x] IA/RAG (heurística + embeddings locais híbridos; pgvector/OpenAI opcional)
 - [ ] Compatibilidade automática
-- [ ] Comparador de versões
-- [ ] Impacto em folha
+- [x] Comparador de versões
+- [x] Impacto em folha (heurística v1 + UI)

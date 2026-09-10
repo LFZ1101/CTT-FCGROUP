@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CurrentUser, AuthUser } from '../../common/decorators/current-user.decorator';
 import { DocumentsService } from './documents.service';
-import { EnqueueDownloadDto } from './dto/document.dto';
+import { DocumentReviewDto, EnqueueDownloadDto } from './dto/document.dto';
 
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('documents')
@@ -16,9 +16,28 @@ export class DocumentsController {
     return this.service.list(user.tenantId);
   }
 
+  @Get('search')
+  search(
+    @CurrentUser() user: { tenantId: string },
+    @Query('q') q = '',
+    @Query('limit') limit?: string,
+  ) {
+    return this.service.search(user.tenantId, q, limit ? Number(limit) : 40);
+  }
+
   @Get(':id')
   get(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
     return this.service.get(user.tenantId, id);
+  }
+
+  @Post(':id/review')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
+  review(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: DocumentReviewDto,
+  ) {
+    return this.service.acknowledgeReview(user.tenantId, user.sub, id, dto);
   }
 
   @Get(':id/pages')
