@@ -408,10 +408,11 @@ export class CollaborativeService implements OnModuleDestroy {
     });
   }
 
-  async listPendingModeration(tenantId: string) {
+  async listPendingModeration(tenantId: string, role?: string) {
+    const crossTenant = role === 'MODERATOR';
     return this.prisma.collaborativeContribution.findMany({
       where: {
-        tenantId,
+        ...(crossTenant ? {} : { tenantId }),
         moderationStatus: 'PENDING',
         sharingScope: { not: 'PRIVATE' },
       },
@@ -428,6 +429,7 @@ export class CollaborativeService implements OnModuleDestroy {
           },
         },
         union: { select: { id: true, name: true, acronym: true, states: true } },
+        // identidade do escritório só para moderação/auditoria (não para consumidores da rede)
         tenant: { select: { id: true, name: true, slug: true } },
       },
       take: 100,
@@ -440,10 +442,14 @@ export class CollaborativeService implements OnModuleDestroy {
     contributionId: string,
     decision: 'APPROVE' | 'REJECT' | 'NEEDS_CHANGES' | 'DUPLICATE',
     notes?: string,
+    role?: string,
   ) {
-    // Moderação: OWNER/ADMIN do próprio tenant da contribuição (fase 1).
+    const crossTenant = role === 'MODERATOR';
     const contribution = await this.prisma.collaborativeContribution.findFirst({
-      where: { id: contributionId, tenantId: moderatorTenantId },
+      where: {
+        id: contributionId,
+        ...(crossTenant ? {} : { tenantId: moderatorTenantId }),
+      },
       include: { document: true, union: true },
     });
     if (!contribution) throw new NotFoundException('Contribuição não encontrada');
@@ -472,19 +478,25 @@ export class CollaborativeService implements OnModuleDestroy {
       });
       await this.prisma.auditLog.create({
         data: {
-          tenantId: moderatorTenantId,
+          tenantId: contribution.tenantId,
           userId: moderatorUserId,
           action: 'COLLABORATIVE_DOCUMENT_REJECTED',
           entity: 'CollaborativeContribution',
           entityId: contributionId,
-          metadata: { decision, notes: notes || null },
+          metadata: {
+            decision,
+            notes: notes || null,
+            moderatorRole: role || null,
+            moderatorTenantId,
+            crossTenant,
+          },
         },
       });
       return updated;
     }
 
     // APPROVE → publish if network scope
-    const approved = await this.prisma.collaborativeContribution.update({
+    await this.prisma.collaborativeContribution.update({
       where: { id: contributionId },
       data: {
         status:
@@ -501,12 +513,17 @@ export class CollaborativeService implements OnModuleDestroy {
 
     await this.prisma.auditLog.create({
       data: {
-        tenantId: moderatorTenantId,
+        tenantId: contribution.tenantId,
         userId: moderatorUserId,
         action: 'COLLABORATIVE_DOCUMENT_APPROVED',
         entity: 'CollaborativeContribution',
         entityId: contributionId,
-        metadata: { sharingScope: contribution.sharingScope },
+        metadata: {
+          sharingScope: contribution.sharingScope,
+          moderatorRole: role || null,
+          moderatorTenantId,
+          crossTenant,
+        },
       },
     });
 
@@ -514,7 +531,26 @@ export class CollaborativeService implements OnModuleDestroy {
       await this.publish(contributionId, moderatorUserId);
     }
 
-    return this.getContribution(moderatorTenantId, contributionId);
+    // getContribution is tenant-scoped; MODERATOR precisa ler o tenant da contribuição
+    return this.prisma.collaborativeContribution.findFirstOrThrow({
+      where: { id: contributionId },
+      include: {
+        document: {
+          select: {
+            id: true,
+            title: true,
+            processingStatus: true,
+            documentClass: true,
+            classConfidence: true,
+            contentHash: true,
+            pageCount: true,
+            instrumentId: true,
+          },
+        },
+        union: { select: { id: true, name: true, acronym: true } },
+        publication: true,
+      },
+    });
   }
 
   private async publish(contributionId: string, actorUserId: string) {
@@ -574,9 +610,19 @@ export class CollaborativeService implements OnModuleDestroy {
     return publication;
   }
 
-  async revoke(tenantId: string, userId: string, contributionId: string, reason: string) {
+  async revoke(
+    tenantId: string,
+    userId: string,
+    contributionId: string,
+    reason: string,
+    role?: string,
+  ) {
+    const crossTenant = role === 'MODERATOR';
     const c = await this.prisma.collaborativeContribution.findFirst({
-      where: { id: contributionId, tenantId },
+      where: {
+        id: contributionId,
+        ...(crossTenant ? {} : { tenantId }),
+      },
       include: { publication: true },
     });
     if (!c) throw new NotFoundException('Contribuição não encontrada');
@@ -590,15 +636,25 @@ export class CollaborativeService implements OnModuleDestroy {
         where: { id: c.publication.id },
         data: { revokedAt: new Date(), revokeReason: reason },
       });
+      // alerta no tenant contribuinte
+      await this.prisma.alert.create({
+        data: {
+          tenantId: c.tenantId,
+          type: 'COLLABORATIVE_DOCUMENT_REVOKED',
+          severity: 'WARNING',
+          title: 'Documento retirado da Base Colaborativa',
+          message: `Publicação revogada. Motivo: ${reason}`,
+        },
+      });
     }
     await this.prisma.auditLog.create({
       data: {
-        tenantId,
+        tenantId: c.tenantId,
         userId,
         action: 'COLLABORATIVE_DOCUMENT_REVOKED',
         entity: 'CollaborativeContribution',
         entityId: contributionId,
-        metadata: { reason },
+        metadata: { reason, moderatorRole: role || null, moderatorTenantId: tenantId, crossTenant },
       },
     });
     return { revoked: true };

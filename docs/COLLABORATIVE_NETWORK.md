@@ -60,7 +60,12 @@ Consumidores da rede veem:
 
 ## Moderação
 
-OWNER/ADMIN do tenant remetente: aprovar, rejeitar, solicitar revisão, marcar duplicado. Publicação na rede **não** ocorre só porque o upload terminou.
+- **OWNER / ADMIN** do tenant remetente: moderam contribuições do próprio escritório.
+- **MODERATOR**: fila **cross-tenant** da Base Colaborativa (vê escritório remetente só para auditoria). Consumidores da rede continuam sem ver o colaborador.
+
+Endpoints de moderação/revogação: `@Roles('OWNER','ADMIN','MODERATOR')`.
+
+Login demo (após seed): `moderator@demo.cct` / `Demo@123456`.
 
 ## Solicitações
 

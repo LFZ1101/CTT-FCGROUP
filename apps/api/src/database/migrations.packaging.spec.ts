@@ -25,7 +25,7 @@ describe('prisma migrations packaging', () => {
       assert.ok(existsSync(sql), `missing ${sql}`);
       const body = readFileSync(sql, 'utf8');
       assert.ok(
-        /CREATE TABLE|CREATE TYPE|CREATE EXTENSION|ALTER TABLE/i.test(body),
+        /CREATE TABLE|CREATE TYPE|CREATE EXTENSION|ALTER TABLE|ALTER TYPE/i.test(body),
         `unexpected migration body in ${d.name}`,
       );
     }

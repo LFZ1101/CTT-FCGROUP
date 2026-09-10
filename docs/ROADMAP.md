@@ -32,7 +32,7 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 18 | Import CSV vínculos | DONE_NEEDS_TESTS |
 | 19 | Busca documental | DONE_NEEDS_TESTS (secundária) |
 | 19b | Match oficial avançado (metadados/similaridade além de hash) | DONE_NEEDS_TESTS |
-| 19c | Papel MODERATOR cross-tenant | NOT_STARTED |
+| 19c | Papel MODERATOR cross-tenant | DONE_NEEDS_TESTS |
 
 ## P2 — Expansão
 
