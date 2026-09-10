@@ -148,7 +148,7 @@ Usuário cria escritório, importa empresas, cadastra sindicatos/fontes e acompa
 - [ ] Adaptador Mediador dedicado
 - [ ] Crawlers sindicais específicos
 - [ ] Parser PDF / páginas
-- [x] IA/RAG (heurística v1 com citação; embeddings/pgvector pendente)
+- [x] IA/RAG (heurística + embeddings locais híbridos; pgvector/OpenAI opcional)
 - [ ] Compatibilidade automática
 - [ ] Comparador de versões
 - [ ] Impacto em folha

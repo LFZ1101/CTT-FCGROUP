@@ -14,6 +14,7 @@ import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { ComparisonsModule } from './modules/comparisons/comparisons.module';
 import { RagModule } from './modules/rag/rag.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RagModule } from './modules/rag/rag.module';
     DocumentsModule,
     ComparisonsModule,
     RagModule,
+    AuditModule,
   ],
   controllers: [HealthController],
 })

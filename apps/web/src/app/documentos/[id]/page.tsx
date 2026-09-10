@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Shell from '../../../components/Shell';
 import PageHeader from '../../../components/PageHeader';
 import AskPanel from '../../../components/AskPanel';
+import AuditTrail from '../../../components/AuditTrail';
 import { api } from '../../../lib/api';
 
 type Page = { id: string; pageNumber: number; text: string; charCount: number };
@@ -138,6 +139,7 @@ export default function DocumentoPage() {
             {(doc.clauses?.length || doc.pages?.length) ? (
               <AskPanel documentId={doc.id} />
             ) : null}
+            <AuditTrail entity="DiscoveredDocument" entityId={doc.id} />
 
             <section className="panel" style={{ marginBottom: 14 }}>
               <div className="panelhead">

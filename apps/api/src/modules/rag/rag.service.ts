@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { AskRagDto, ReindexRagDto } from './dto/rag.dto';
+import { EMBEDDING_MODEL, embedText } from './embeddings';
 import { buildExtractiveAnswer, retrieveChunks } from './retrieve';
 
 @Injectable()
@@ -62,12 +63,22 @@ export class RagService {
         text: c.text,
         pageStart: c.pageStart,
         pageEnd: c.pageEnd,
+        embedding: Array.isArray(c.embedding) ? (c.embedding as number[]) : null,
       })),
       dto.topK ?? 5,
     );
 
     const built = buildExtractiveAnswer(question, hits);
-    const provider = process.env.OPENAI_API_KEY ? 'heuristic+openai-ready' : 'heuristic-v1';
+    let answer = built.answer;
+    let provider: string = `hybrid-${EMBEDDING_MODEL}`;
+
+    if (!built.insufficientEvidence && process.env.OPENAI_API_KEY) {
+      const synthesized = await this.synthesizeWithOpenAI(question, hits.slice(0, 3));
+      if (synthesized) {
+        answer = synthesized;
+        provider = `hybrid-${EMBEDDING_MODEL}+openai`;
+      }
+    }
 
     await this.prisma.auditLog.create({
       data: {
@@ -80,6 +91,8 @@ export class RagService {
           question,
           insufficientEvidence: built.insufficientEvidence,
           topScore: hits[0]?.score ?? 0,
+          lexicalScore: hits[0]?.lexicalScore ?? 0,
+          semanticScore: hits[0]?.semanticScore ?? 0,
           citationCount: built.citations.length,
           provider,
         },
@@ -88,9 +101,9 @@ export class RagService {
 
     return {
       question,
-      answer: built.answer,
+      answer,
       insufficientEvidence: built.insufficientEvidence,
-      provider: 'heuristic-v1',
+      provider,
       scope: {
         documentId: dto.documentId ?? null,
         instrumentId: dto.instrumentId ?? null,
@@ -108,6 +121,52 @@ export class RagService {
     };
   }
 
+  private async synthesizeWithOpenAI(
+    question: string,
+    hits: Array<{ clauseNumber: string | null; title: string | null; snippet: string; text: string }>,
+  ): Promise<string | null> {
+    try {
+      const context = hits
+        .map((h, i) => {
+          const head = [h.clauseNumber ? `Cláusula ${h.clauseNumber}` : null, h.title]
+            .filter(Boolean)
+            .join(' — ');
+          return `[${i + 1}] ${head || 'Trecho'}\n${h.text.slice(0, 900)}`;
+        })
+        .join('\n\n');
+
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          temperature: 0,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Você é um assistente jurídico trabalhista. Responda em português somente com base no contexto fornecido. Cite as cláusulas usadas. Se o contexto for insuficiente, diga que não há evidência suficiente.',
+            },
+            {
+              role: 'user',
+              content: `Pergunta: ${question}\n\nContexto:\n${context}`,
+            },
+          ],
+        }),
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      return json.choices?.[0]?.message?.content?.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
   private async ensureDocumentChunks(tenantId: string, documentId: string) {
     const count = await this.prisma.documentChunk.count({
       where: { tenantId, discoveredDocumentId: documentId },
@@ -120,6 +179,14 @@ export class RagService {
       where: { tenantId, instrumentId },
     });
     if (count === 0) await this.indexInstrument(tenantId, instrumentId);
+  }
+
+  private chunkPayload(text: string, title?: string | null, clauseNumber?: string | null, category?: string | null) {
+    const blob = [clauseNumber, title, category, text].filter(Boolean).join(' ');
+    return {
+      embedding: embedText(blob),
+      modelVersion: EMBEDDING_MODEL,
+    };
   }
 
   async indexDocument(tenantId: string, documentId: string) {
@@ -147,13 +214,12 @@ export class RagService {
           category: String(c.category),
           text: c.text,
           metadata: { source: 'DocumentClause', evidence: c.evidence },
-          modelVersion: 'heuristic-v1',
+          ...this.chunkPayload(c.text, c.title, c.number, String(c.category)),
         })),
       });
       return doc.clauses.length;
     }
 
-    // Fallback: página como chunk quando não há cláusulas
     if (doc.pages.length) {
       await this.prisma.documentChunk.createMany({
         data: doc.pages.map((p) => ({
@@ -165,7 +231,7 @@ export class RagService {
           title: `Página ${p.pageNumber}`,
           text: p.text,
           metadata: { source: 'DocumentPage' },
-          modelVersion: 'heuristic-v1',
+          ...this.chunkPayload(p.text, `Página ${p.pageNumber}`),
         })),
       });
       return doc.pages.length;
@@ -202,13 +268,12 @@ export class RagService {
           category: c.category,
           text: c.text,
           metadata: { source: 'InstrumentClause' },
-          modelVersion: 'heuristic-v1',
+          ...this.chunkPayload(c.text, c.title, c.number, c.category),
         })),
       });
       return instrument.clauses.length;
     }
 
-    // Fallback: indexar documentos vinculados
     let total = 0;
     for (const d of instrument.discoveredDocuments) {
       total += await this.indexDocument(tenantId, d.id);

@@ -1,10 +1,12 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthUser } from '../../common/decorators/current-user.decorator';
 import { InstrumentsService } from './instruments.service';
 import { CreateInstrumentDto, ReviewInstrumentDto } from './dto/instrument.dto';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('instruments')
 export class InstrumentsController {
   constructor(private readonly service: InstrumentsService) {}
@@ -20,11 +22,13 @@ export class InstrumentsController {
   }
 
   @Post()
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateInstrumentDto) {
     return this.service.create(user.tenantId, dto);
   }
 
   @Post(':id/validate')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER')
   validate(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -34,6 +38,7 @@ export class InstrumentsController {
   }
 
   @Post(':id/reject')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER')
   reject(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -48,11 +53,13 @@ export class InstrumentsController {
   }
 
   @Post(':id/applications/suggest')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   suggestApplications(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.suggestApplications(user.tenantId, id);
   }
 
   @Post(':id/applications/:applicationId/confirm')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER')
   confirmApplication(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -62,6 +69,7 @@ export class InstrumentsController {
   }
 
   @Post(':id/applications/:applicationId/unconfirm')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER')
   unconfirmApplication(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,

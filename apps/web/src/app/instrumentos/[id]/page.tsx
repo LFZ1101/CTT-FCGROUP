@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Shell from '../../../components/Shell';
 import PageHeader from '../../../components/PageHeader';
 import AskPanel from '../../../components/AskPanel';
+import AuditTrail from '../../../components/AuditTrail';
 import { api } from '../../../lib/api';
 
 type Clause = {
@@ -156,6 +157,7 @@ export default function InstrumentoDetalhePage() {
             </div>
 
             {(item.clauses?.length || 0) > 0 ? <AskPanel instrumentId={item.id} /> : null}
+            <AuditTrail entity="CollectiveInstrument" entityId={item.id} />
 
             <section className="panel" style={{ marginBottom: 14 }}>
               <div className="panelhead">

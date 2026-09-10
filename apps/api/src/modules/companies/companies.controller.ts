@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthUser } from '../../common/decorators/current-user.decorator';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto, LinkCompanyUnionDto, UpdateCompanyDto } from './dto/company.dto';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('companies')
 export class CompaniesController {
   constructor(private readonly service: CompaniesService) {}
@@ -20,21 +22,25 @@ export class CompaniesController {
   }
 
   @Post()
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER')
   create(@CurrentUser() u: AuthUser, @Body() dto: CreateCompanyDto) {
     return this.service.create(u.tenantId, dto);
   }
 
   @Patch(':id')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER')
   update(@CurrentUser() u: AuthUser, @Param('id') id: string, @Body() dto: UpdateCompanyDto) {
     return this.service.update(u.tenantId, id, dto);
   }
 
   @Delete(':id')
+  @Roles('OWNER', 'ADMIN')
   remove(@CurrentUser() u: AuthUser, @Param('id') id: string) {
     return this.service.remove(u.tenantId, id);
   }
 
   @Post(':id/unions')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   linkUnion(
     @CurrentUser() u: AuthUser,
     @Param('id') id: string,
@@ -44,6 +50,7 @@ export class CompaniesController {
   }
 
   @Delete(':id/unions/:linkId')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   unlinkUnion(
     @CurrentUser() u: AuthUser,
     @Param('id') id: string,

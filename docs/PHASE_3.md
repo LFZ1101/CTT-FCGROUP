@@ -106,9 +106,18 @@
 - UI `AskPanel` em `/documentos/[id]` e `/instrumentos/[id]` com fontes (cláusula/página/score).
 - Auditoria `RAG_ASK`.
 
-## Próximo (3J+)
+## 3J — RBAC fino + embeddings locais + auditoria documental (entregue)
 
-- Embeddings + pgvector (busca semântica)
-- Provider OpenAI opcional para síntese (`OPENAI_API_KEY`)
-- RolesGuard fino e trilha de auditoria completa na UI documental
+- `RolesGuard` + `@Roles(...)` em mutações sensíveis (documentos, instrumentos, RAG, comparações, empresas).
+- Embeddings locais `hashing-v1` (256-d) persistidos em `DocumentChunk.embedding`.
+- Retrieval híbrido: Jaccard lexical + cosine semântico (sem pgvector obrigatório).
+- Síntese OpenAI opcional via `OPENAI_API_KEY` / `OPENAI_MODEL` (fallback extractivo).
+- API `GET /audit?entity=&entityId=&action=&limit=`.
+- UI `/auditoria` + painel `AuditTrail` em documento/instrumento.
+- Worker reindexa chunks já com embedding.
+
+## Próximo (3K+)
+
+- pgvector nativo (substituir JSON embedding)
 - Diff semântico entre versões
+- Notificações/alertas operacionais avançados

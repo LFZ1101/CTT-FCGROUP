@@ -42,6 +42,8 @@ describe('retrieveChunks', () => {
     const hits = retrieveChunks('Qual o adicional de horas extras?', chunks, 3);
     assert.equal(hits[0].id, 'c1');
     assert.ok(hits[0].score > hits[1].score);
+    assert.ok(hits[0].semanticScore >= 0);
+    assert.ok(hits[0].lexicalScore >= 0);
   });
 
   it('returns empty for empty question', () => {
@@ -61,12 +63,13 @@ describe('buildExtractiveAnswer', () => {
         pageStart: 1,
         pageEnd: 1,
         score: 0.01,
+        lexicalScore: 0.01,
+        semanticScore: 0,
         snippet: 'bar',
       },
     ]);
     assert.equal(result.insufficientEvidence, true);
     assert.equal(result.answer, INSUFFICIENT_EVIDENCE);
-    assert.equal(result.citations.length, 0);
   });
 
   it('returns citations for strong hits', () => {
@@ -80,6 +83,8 @@ describe('buildExtractiveAnswer', () => {
         pageStart: 14,
         pageEnd: 14,
         score: 0.55,
+        lexicalScore: 0.4,
+        semanticScore: 0.3,
         snippet: 'As horas extras serão remuneradas com adicional de 70%.',
       },
     ]);

@@ -1,6 +1,51 @@
 import type { PrismaClient } from '@prisma/client';
 
-/** Indexa cláusulas do instrumento (e documento) como DocumentChunk para RAG 3I. */
+const DIM = 256;
+
+function normalize(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hashToken(token: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < token.length; i++) {
+    h ^= token.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function embedText(text: string): number[] {
+  const vec = new Float64Array(DIM);
+  const toks = normalize(text)
+    .split(' ')
+    .map((t) => t.trim())
+    .filter((t) => t.length > 2);
+  if (!toks.length) return Array.from(vec);
+  for (const t of toks) {
+    const h = hashToken(t);
+    vec[h % DIM] += h & 1 ? 1 : -1;
+    const h2 = hashToken(t.slice(0, Math.min(4, t.length)));
+    vec[h2 % DIM] += 0.5 * (h2 & 1 ? 1 : -1);
+  }
+  let norm = 0;
+  for (let i = 0; i < DIM; i++) norm += vec[i] * vec[i];
+  norm = Math.sqrt(norm) || 1;
+  return Array.from(vec, (x) => Number((x / norm).toFixed(6)));
+}
+
+function payload(text: string, title?: string | null, clauseNumber?: string | null, category?: string | null) {
+  const blob = [clauseNumber, title, category, text].filter(Boolean).join(' ');
+  return { embedding: embedText(blob), modelVersion: 'hashing-v1' };
+}
+
+/** Indexa cláusulas do instrumento (e documento) como DocumentChunk para RAG 3J. */
 export async function indexChunksForDocument(
   prisma: PrismaClient,
   input: {
@@ -36,7 +81,7 @@ export async function indexChunksForDocument(
         category: String(c.category),
         text: c.text,
         metadata: { source: 'DocumentClause', evidence: c.evidence },
-        modelVersion: 'heuristic-v1',
+        ...payload(c.text, c.title, c.number, String(c.category)),
       })),
     });
     return doc.clauses.length;
@@ -53,7 +98,7 @@ export async function indexChunksForDocument(
         title: `Página ${p.pageNumber}`,
         text: p.text,
         metadata: { source: 'DocumentPage' },
-        modelVersion: 'heuristic-v1',
+        ...payload(p.text, `Página ${p.pageNumber}`),
       })),
     });
     return doc.pages.length;
@@ -94,7 +139,7 @@ export async function indexChunksForInstrument(
       category: c.category,
       text: c.text,
       metadata: { source: 'InstrumentClause' },
-      modelVersion: 'heuristic-v1',
+      ...payload(c.text, c.title, c.number, c.category),
     })),
   });
 

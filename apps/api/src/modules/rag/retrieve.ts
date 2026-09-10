@@ -1,3 +1,5 @@
+import { cosineSimilarity, embedText } from './embeddings';
+
 export type RagChunkInput = {
   id: string;
   title: string | null;
@@ -6,10 +8,13 @@ export type RagChunkInput = {
   text: string;
   pageStart: number | null;
   pageEnd: number | null;
+  embedding?: number[] | null;
 };
 
 export type RagHit = RagChunkInput & {
   score: number;
+  lexicalScore: number;
+  semanticScore: number;
   snippet: string;
 };
 
@@ -63,8 +68,8 @@ function snippetFrom(text: string, question: string, max = 280): string {
 }
 
 /**
- * Heuristic retrieval over clause-first chunks (Phase 3I).
- * Score = 0.55*text Jaccard + 0.30*title Jaccard + 0.15*token coverage in text.
+ * Hybrid retrieval (Phase 3J): lexical Jaccard + hashing embedding cosine.
+ * Score = 0.45*text + 0.20*title + 0.10*coverage + 0.25*cosine.
  */
 export function retrieveChunks(
   question: string,
@@ -74,6 +79,7 @@ export function retrieveChunks(
   const q = question.trim();
   if (!q || !chunks.length) return [];
   const qTokens = tokens(q);
+  const qEmbed = embedText(q);
 
   const scored = chunks.map((chunk) => {
     const title = chunk.title || '';
@@ -87,9 +93,14 @@ export function retrieveChunks(
       for (const t of qTokens) if (bodyTokens.has(t)) hit += 1;
       coverage = hit / qTokens.size;
     }
-    const score = textSim * 0.55 + titleSim * 0.3 + coverage * 0.15;
+    const chunkEmbed = chunk.embedding?.length ? chunk.embedding : embedText(body);
+    const semantic = cosineSimilarity(qEmbed, chunkEmbed);
+    const lexical = textSim * 0.45 + titleSim * 0.2 + coverage * 0.1;
+    const score = lexical + semantic * 0.25;
     return {
       ...chunk,
+      lexicalScore: Number(lexical.toFixed(4)),
+      semanticScore: Number(semantic.toFixed(4)),
       score: Number(score.toFixed(4)),
       snippet: snippetFrom(chunk.text, q),
     };
@@ -115,6 +126,8 @@ export function buildExtractiveAnswer(question: string, hits: RagHit[], minScore
         pageEnd: number | null;
         snippet: string;
         score: number;
+        lexicalScore?: number;
+        semanticScore?: number;
       }>,
     };
   }
@@ -160,6 +173,8 @@ export function buildExtractiveAnswer(question: string, hits: RagHit[], minScore
       pageEnd: h.pageEnd,
       snippet: h.snippet,
       score: h.score,
+      lexicalScore: h.lexicalScore,
+      semanticScore: h.semanticScore,
     })),
   };
 }

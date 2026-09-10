@@ -1,10 +1,12 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { DocumentsService } from './documents.service';
 import { EnqueueDownloadDto } from './dto/document.dto';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('documents')
 export class DocumentsController {
   constructor(private readonly service: DocumentsService) {}
@@ -35,21 +37,25 @@ export class DocumentsController {
   }
 
   @Post('download')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   enqueue(@CurrentUser() user: { tenantId: string }, @Body() dto: EnqueueDownloadDto) {
     return this.service.enqueueDownload(user.tenantId, dto.documentId);
   }
 
   @Post(':id/download')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   enqueueOne(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
     return this.service.enqueueDownload(user.tenantId, id);
   }
 
   @Post('parse')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   enqueueParse(@CurrentUser() user: { tenantId: string }, @Body() dto: EnqueueDownloadDto) {
     return this.service.enqueueParse(user.tenantId, dto.documentId);
   }
 
   @Post(':id/parse')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   enqueueParseOne(@CurrentUser() user: { tenantId: string }, @Param('id') id: string) {
     return this.service.enqueueParse(user.tenantId, id);
   }
