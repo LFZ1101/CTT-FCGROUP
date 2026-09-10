@@ -98,7 +98,7 @@ export class NotificationsController {
   @Delete('push/subscribe')
   @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST', 'AUDITOR', 'CLIENT')
   unsubscribe(@CurrentUser() user: AuthUser, @Body() dto: PushUnsubscribeDto) {
-    return this.service.unsubscribePush(user.tenantId, dto.endpoint);
+    return this.service.unsubscribePush(user.tenantId, user.sub, dto.endpoint);
   }
 
   @Post('alerts/email')

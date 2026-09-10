@@ -40,12 +40,12 @@ export async function fetchMediadorWithBrowser(
   }
 
   const timeoutMs = init?.timeoutMs ?? Number(process.env.MEDIADOR_TIMEOUT_MS || 45_000);
-  const browser = await pw.chromium.launch({
-    headless: process.env.MEDIADOR_BROWSER_HEADLESS !== 'false',
-    args: ['--disable-blink-features=AutomationControlled'],
-  });
-
+  let browser: any = null;
   try {
+    browser = await pw.chromium.launch({
+      headless: process.env.MEDIADOR_BROWSER_HEADLESS !== 'false',
+      args: ['--disable-blink-features=AutomationControlled'],
+    });
     const context = await browser.newContext({
       userAgent:
         init?.userAgent ||
@@ -80,10 +80,10 @@ export async function fetchMediadorWithBrowser(
       status: 0,
       finalUrl: url,
       html: '',
-      blocked: true,
+      blocked: false,
       reason: String(err?.message || err).slice(0, 200),
     };
   } finally {
-    await browser.close().catch(() => undefined);
+    if (browser) await browser.close().catch(() => undefined);
   }
 }

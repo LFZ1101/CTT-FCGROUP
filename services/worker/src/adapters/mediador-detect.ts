@@ -1,8 +1,9 @@
-const MEDIADOR_HOST = /(mediador\.mte\.gov\.br|www\.mediador\.mte\.gov\.br)/i;
+const MEDIADOR_HOSTS = new Set(['mediador.mte.gov.br', 'www.mediador.mte.gov.br']);
 
 export function isMediadorUrl(url: string): boolean {
   try {
-    return MEDIADOR_HOST.test(new URL(url).hostname);
+    const host = new URL(url).hostname.toLowerCase();
+    return MEDIADOR_HOSTS.has(host);
   } catch {
     return false;
   }
@@ -15,7 +16,12 @@ export function detectMediadorBlock(html: string, status: number): {
   if (status === 403 || status === 429) {
     return { blocked: true, reason: `HTTP ${status}` };
   }
-  if (/captcha|cloudflare|access denied|desafio|verifica(ç|c)ão/i.test(html)) {
+  // Evitar termos genéricos ("verificação", "desafio") que geram falso positivo em CCTs.
+  if (
+    /captcha|hcaptcha|recaptcha|cloudflare|cf-challenge|access denied|attention required|just a moment\.\.\.|enable cookies/i.test(
+      html,
+    )
+  ) {
     return { blocked: true, reason: 'challenge_or_captcha' };
   }
   if (/enable javascript|javascript.*?required/i.test(html) && html.length < 2500) {

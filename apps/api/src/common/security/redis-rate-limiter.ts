@@ -1,8 +1,16 @@
 import { Redis } from 'ioredis';
 import { MemoryRateLimiter } from './memory-rate-limiter';
 
+const INCR_EXPIRE_LUA = `
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return current
+`;
+
 /**
- * Rate limit distribuído via Redis (INCR + PEXPIRE), com fallback em memória.
+ * Rate limit distribuído via Redis (INCR+PEXPIRE atômico), com fallback em memória.
  */
 export class RedisRateLimiter {
   private readonly fallback: MemoryRateLimiter;
@@ -24,10 +32,9 @@ export class RedisRateLimiter {
       if (this.redis.status === 'wait') {
         await this.redis.connect();
       }
-      const count = await this.redis.incr(redisKey);
-      if (count === 1) {
-        await this.redis.pexpire(redisKey, this.windowMs);
-      }
+      const count = Number(
+        await this.redis.eval(INCR_EXPIRE_LUA, 1, redisKey, String(this.windowMs)),
+      );
       return count <= this.limit;
     } catch {
       return this.fallback.try(key);

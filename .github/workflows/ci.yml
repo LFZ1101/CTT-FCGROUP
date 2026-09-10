@@ -13,7 +13,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -43,6 +43,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       # Gate Mediador Redis é opt-in; desligado no CI para não prender handles nos testes
       MEDIADOR_GATE_REDIS: 'false'
+      BOOTSTRAP_OPEN: 'true'
       JWT_SECRET: ci-test-secret
       STORAGE_BUCKET: cct-documents
       STORAGE_ENDPOINT: http://127.0.0.1:9000
@@ -80,3 +81,4 @@ jobs:
           DATABASE_URL: postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public
           REDIS_URL: redis://localhost:6379
           MEDIADOR_GATE_REDIS: 'false'
+          BOOTSTRAP_OPEN: 'true'

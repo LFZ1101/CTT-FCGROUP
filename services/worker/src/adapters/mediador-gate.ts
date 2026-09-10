@@ -28,14 +28,22 @@ function getRedis(): Redis | null {
     return null;
   }
   try {
-    redis = new Redis(url, {
+    const client = new Redis(url, {
       maxRetriesPerRequest: 1,
       enableReadyCheck: false,
       lazyConnect: true,
       enableOfflineQueue: false,
+      connectTimeout: 1500,
+      retryStrategy: () => null,
     });
-    redis.connect().catch(() => {
-      redis = null;
+    redis = client;
+    client.connect().catch(() => {
+      try {
+        client.disconnect();
+      } catch {
+        /* ignore */
+      }
+      if (redis === client) redis = null;
     });
     return redis;
   } catch {

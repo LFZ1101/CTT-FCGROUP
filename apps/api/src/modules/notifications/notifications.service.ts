@@ -96,9 +96,9 @@ export class NotificationsService {
     });
   }
 
-  async unsubscribePush(tenantId: string, endpoint: string) {
+  async unsubscribePush(tenantId: string, userId: string, endpoint: string) {
     const result = await this.prisma.pushSubscription.deleteMany({
-      where: { tenantId, endpoint },
+      where: { tenantId, userId, endpoint },
     });
     return { removed: result.count };
   }
@@ -144,6 +144,13 @@ export class NotificationsService {
     // se configurado, envia para a lista fixa (ops).
     const recipients = configured.length ? configured : emailRecipients;
 
+    const escapeHtml = (s: string) =>
+      s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
     const email =
       recipients.length === 0
         ? { sent: false, skipped: true as const, reason: 'no_recipients' }
@@ -151,7 +158,7 @@ export class NotificationsService {
             to: recipients,
             subject: `[CCT Intelligence] ${alert.severity}: ${alert.title}`,
             text: `${alert.message}\n\nTipo: ${alert.type}\nSeveridade: ${alert.severity}\n`,
-            html: `<p><strong>${alert.title}</strong></p><p>${alert.message}</p><p>Severidade: ${alert.severity}</p>`,
+            html: `<p><strong>${escapeHtml(alert.title)}</strong></p><p>${escapeHtml(alert.message)}</p><p>Severidade: ${escapeHtml(alert.severity)}</p>`,
           });
 
     const webhook = await deliverWebhook({

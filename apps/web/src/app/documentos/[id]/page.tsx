@@ -169,9 +169,18 @@ export default function DocumentoPage() {
           title={doc?.title || 'Revisão documental'}
           description="Texto por página, metadados com evidência, classificação e cláusulas segmentadas."
         />
-        {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
+        {error && doc ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
         {!doc ? (
-          <div className="empty">Carregando...</div>
+          error ? (
+            <div className="empty">
+              <p>{error}</p>
+              <button className="secondary" type="button" onClick={() => void load()}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : (
+            <div className="empty">Carregando...</div>
+          )
         ) : (
           <>
             <div className="toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>

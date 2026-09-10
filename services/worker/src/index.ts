@@ -146,7 +146,8 @@ async function monitorSource(sourceId: string) {
         })();
 
     if (isMediador) {
-      markMediadorFetch(source.url, Boolean(response.blocked || !response.ok));
+      // Circuit só por challenge/bloqueio real — HTTP error/rede não abre o breaker.
+      markMediadorFetch(source.url, Boolean(response.blocked));
     }
 
     if (response.blocked || !response.ok) {

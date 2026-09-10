@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../database/prisma.service';
 import { AskRagDto, ReindexRagDto } from './dto/rag.dto';
 import { EMBEDDING_MODEL, embedText } from './embeddings';
+import { syncTenantChunkVecs } from './pgvector';
 import { buildExtractiveAnswer, retrieveChunks } from './retrieve';
 
 @Injectable()
@@ -247,6 +248,7 @@ export class RagService {
           ...this.chunkPayload(c.text, c.title, c.number, String(c.category)),
         })),
       });
+      await syncTenantChunkVecs(this.prisma, { tenantId, discoveredDocumentId: documentId });
       return doc.clauses.length;
     }
 
@@ -264,6 +266,7 @@ export class RagService {
           ...this.chunkPayload(p.text, `Página ${p.pageNumber}`),
         })),
       });
+      await syncTenantChunkVecs(this.prisma, { tenantId, discoveredDocumentId: documentId });
       return doc.pages.length;
     }
 
@@ -301,6 +304,7 @@ export class RagService {
           ...this.chunkPayload(c.text, c.title, c.number, c.category),
         })),
       });
+      await syncTenantChunkVecs(this.prisma, { tenantId, instrumentId });
       return instrument.clauses.length;
     }
 

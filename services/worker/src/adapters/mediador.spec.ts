@@ -13,7 +13,9 @@ import {
 describe('mediador adapter (real integration helpers)', () => {
   it('detects mediador hosts', () => {
     assert.equal(isMediadorUrl('https://www.mediador.mte.gov.br/consulta'), true);
+    assert.equal(isMediadorUrl('https://mediador.mte.gov.br/'), true);
     assert.equal(isMediadorUrl('https://example.com'), false);
+    assert.equal(isMediadorUrl('https://mediador.mte.gov.br.evil.com/'), false);
   });
 
   it('builds consultation URLs', () => {
@@ -39,6 +41,10 @@ describe('mediador adapter (real integration helpers)', () => {
     assert.equal(detectMediadorBlock('captcha challenge', 200).blocked, true);
     assert.equal(detectMediadorBlock('<html>ok</html>', 200).blocked, false);
     assert.equal(detectMediadorBlock('x', 403).blocked, true);
+    assert.equal(
+      detectMediadorBlock('<p>verificação de documentos da CCT</p>', 200).blocked,
+      false,
+    );
   });
 
   it('merges without duplicates', () => {
@@ -73,7 +79,8 @@ describe('mediador adapter (real integration helpers)', () => {
       attempts: 1,
     });
     assert.equal(result.ok, false);
-    assert.ok(result.status === 0 || result.blocked);
+    assert.equal(result.blocked, false);
+    assert.equal(result.status, 0);
   });
 
   it('modo fixture carrega HTML local', async () => {

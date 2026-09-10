@@ -6,6 +6,7 @@ cd "$ROOT"
 export JWT_SECRET="${JWT_SECRET:-ci-test-secret}"
 export DATABASE_URL="${DATABASE_URL:-postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public}"
 export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
+export BOOTSTRAP_OPEN="${BOOTSTRAP_OPEN:-true}"
 export PORT="${E2E_PORT:-4010}"
 
 pnpm --filter @cct/api build
@@ -26,6 +27,8 @@ if [[ "$READY" -ne 1 ]]; then
   echo "e2e: API não ficou pronta em :${PORT}" >&2
   exit 1
 fi
+HEALTH0=$(curl -sS "http://127.0.0.1:${PORT}/health")
+python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('status')=='ok', d; assert d.get('checks',{}).get('database')=='ok', d; print('e2e health ready', d.get('status'))" "$HEALTH0"
 
 EMAIL="e2e-$(date +%s)@test.cct"
 PASS='Temp@123456'
@@ -53,11 +56,13 @@ BOOT_B=$(curl -sS -X POST "http://127.0.0.1:${PORT}/api/v1/auth/bootstrap" \
   -H 'Content-Type: application/json' \
   -d "{\"tenantName\":\"E2E Tenant B\",\"name\":\"E2E Owner B\",\"email\":\"${EMAIL_B}\",\"password\":\"${PASS}\"}")
 TOKEN_B=$(printf '%s' "$BOOT_B" | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
-CNPJ_A="$(printf '444%s' "$(date +%s)" | cut -c1-14)"
+CNPJ_A="$(printf '444%s' "$(date +%s%N)" | tr -cd '0-9' | cut -c1-14)"
 COMPANY_A=$(curl -sS -X POST "http://127.0.0.1:${PORT}/api/v1/companies" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H 'Content-Type: application/json' \
   -d "{\"legalName\":\"Empresa E2E A\",\"cnpj\":\"${CNPJ_A}\",\"city\":\"Curitiba\",\"state\":\"PR\"}")
-COMPANY_A_ID=$(printf '%s' "$COMPANY_A" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+COMPANY_A_ID=$(printf '%s' "$COMPANY_A" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d.get("id"), d; print(d["id"])')
 LIST_B=$(curl -sS -H "Authorization: Bearer ${TOKEN_B}" "http://127.0.0.1:${PORT}/api/v1/companies")
 python3 -c "import json,sys; rows=json.loads(sys.argv[1]); assert all(r.get('id')!=sys.argv[2] for r in rows); print('e2e isolation ok', len(rows))" "$LIST_B" "$COMPANY_A_ID"
+CROSS=$(curl -sS -o /tmp/e2e-cross.json -w '%{http_code}' -H "Authorization: Bearer ${TOKEN_B}" "http://127.0.0.1:${PORT}/api/v1/companies/${COMPANY_A_ID}")
+python3 -c "import sys; code=sys.argv[1]; assert code == '404', code; print('e2e cross-get blocked', code)" "$CROSS"

@@ -8,8 +8,10 @@ RUN pnpm install --frozen-lockfile || pnpm install
 
 FROM deps AS build
 COPY apps/web apps/web
-ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG API_INTERNAL_URL=http://127.0.0.1:4000
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
 RUN pnpm --filter @cct/web build
 
 FROM node:22-alpine AS runner

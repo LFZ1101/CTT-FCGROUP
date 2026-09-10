@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -29,6 +30,8 @@ export class AuthService implements OnModuleDestroy {
         enableReadyCheck: false,
         lazyConnect: true,
         enableOfflineQueue: false,
+        connectTimeout: 1500,
+        retryStrategy: () => null,
       });
     } else {
       this.redis = null;
@@ -55,31 +58,57 @@ export class AuthService implements OnModuleDestroy {
       .replace(/(^-|-$)/g, '');
   }
 
-  async bootstrap(dto: BootstrapDto) {
+  /** Bootstrap aberto em dev/CI; em produção exige BOOTSTRAP_TOKEN (header x-bootstrap-token). */
+  async bootstrap(dto: BootstrapDto, bootstrapToken?: string) {
+    const required = process.env.BOOTSTRAP_TOKEN;
+    if (required && bootstrapToken !== required) {
+      throw new ForbiddenException('Bootstrap desabilitado sem token válido.');
+    }
+    if (!required && process.env.NODE_ENV === 'production' && process.env.BOOTSTRAP_OPEN !== 'true') {
+      throw new ForbiddenException(
+        'Bootstrap bloqueado em produção. Defina BOOTSTRAP_TOKEN ou BOOTSTRAP_OPEN=true.',
+      );
+    }
+
+    const email = dto.email.trim().toLowerCase();
     const passwordHash = await bcrypt.hash(dto.password, 12);
     let slug = this.slugify(dto.tenantName) || 'escritorio';
     if (await this.prisma.tenant.findUnique({ where: { slug } })) {
       slug = `${slug}-${Date.now().toString().slice(-5)}`;
     }
-    const tenant = await this.prisma.tenant.create({
-      data: {
-        name: dto.tenantName,
-        slug,
-        users: {
-          create: { name: dto.name, email: dto.email, passwordHash, role: 'OWNER' },
+    try {
+      const tenant = await this.prisma.tenant.create({
+        data: {
+          name: dto.tenantName,
+          slug,
+          users: {
+            create: { name: dto.name, email, passwordHash, role: 'OWNER' },
+          },
         },
-      },
-      include: { users: true },
-    });
-    const user = tenant.users[0];
-    return this.issue(user, tenant);
+        include: { users: true },
+      });
+      const user = tenant.users[0];
+      return this.issue(user, tenant);
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new ConflictException('Slug ou e-mail já utilizado neste workspace.');
+      }
+      throw err;
+    }
   }
 
   async login(dto: LoginDto) {
-    const email = dto.email.trim();
+    const email = dto.email.trim().toLowerCase();
     const tenantSlug = dto.tenantSlug?.trim().toLowerCase() || '';
-    const rateKey = `${tenantSlug || 'any'}:${email.toLowerCase()}`;
+    const rateKey = `${tenantSlug || 'any'}:${email}`;
 
+    // Limite por e-mail (anti-bypass via tenantSlug) + bucket específico slug:email
+    if (!(await this.loginLimiter.try(`email:${email}`))) {
+      throw new HttpException(
+        'Muitas tentativas de login. Aguarde alguns minutos.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
     if (!(await this.loginLimiter.try(rateKey))) {
       throw new HttpException(
         'Muitas tentativas de login. Aguarde alguns minutos.',
@@ -105,9 +134,8 @@ export class AuthService implements OnModuleDestroy {
         take: 8,
       });
       if (matches.length > 1) {
-        const slugs = matches.map((m) => m.tenant.slug).join(', ');
         throw new ConflictException(
-          `E-mail existe em mais de um workspace. Informe o tenantSlug (${slugs}).`,
+          'E-mail existe em mais de um workspace. Informe o campo tenantSlug.',
         );
       }
       user = matches[0] || null;

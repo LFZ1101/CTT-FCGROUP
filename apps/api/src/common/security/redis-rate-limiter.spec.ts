@@ -10,15 +10,15 @@ describe('RedisRateLimiter', () => {
     assert.equal(await lim.try('a'), false);
   });
 
-  it('usa Redis INCR quando disponível', async () => {
+  it('usa Redis INCR+PEXPIRE atômico quando disponível', async () => {
     const store = new Map<string, number>();
     const redis = {
-      incr: async (key: string) => {
+      status: 'ready',
+      eval: async (_script: string, _n: number, key: string, _ttl: string) => {
         const n = (store.get(key) || 0) + 1;
         store.set(key, n);
         return n;
       },
-      pexpire: async () => 1,
     };
     const lim = new RedisRateLimiter(redis as any, 2, 60_000);
     assert.equal(await lim.try('login'), true);
@@ -28,10 +28,10 @@ describe('RedisRateLimiter', () => {
 
   it('cai para memória se Redis lançar erro', async () => {
     const redis = {
-      incr: async () => {
+      status: 'ready',
+      eval: async () => {
         throw new Error('down');
       },
-      pexpire: async () => 1,
     };
     const lim = new RedisRateLimiter(redis as any, 1, 60_000);
     assert.equal(await lim.try('x'), true);

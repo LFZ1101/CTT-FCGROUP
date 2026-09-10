@@ -141,8 +141,18 @@ function CompararInstrumentosInner() {
       ]);
       setInstruments(list);
       setHistory(comps);
-      setPreviousId((prev) => prev || search.get('previous') || list[1]?.id || '');
-      setCurrentId((prev) => prev || search.get('current') || list[0]?.id || '');
+      setCurrentId((prev) => {
+        const next = prev || search.get('current') || list[0]?.id || '';
+        return next;
+      });
+      setPreviousId((prev) => {
+        if (prev) return prev;
+        const fromQuery = search.get('previous');
+        if (fromQuery) return fromQuery;
+        const current = search.get('current') || list[0]?.id || '';
+        const other = list.find((i) => i.id !== current);
+        return other?.id || list[1]?.id || '';
+      });
     } catch (e: any) {
       setError(e?.message || 'Falha ao carregar dados');
     }
@@ -157,6 +167,10 @@ function CompararInstrumentosInner() {
     e?.preventDefault();
     if (!previousId || !currentId) {
       setError('Selecione os dois instrumentos.');
+      return;
+    }
+    if (previousId === currentId) {
+      setError('Selecione dois instrumentos diferentes.');
       return;
     }
     setBusy(true);

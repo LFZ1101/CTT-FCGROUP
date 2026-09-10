@@ -37,6 +37,29 @@ export async function syncChunkEmbeddingVec(
   return true;
 }
 
+/** Após indexar chunks JSON, espelha embedding → embeddingVec quando a extensão existe. */
+export async function syncTenantChunkVecs(
+  prisma: PrismaClient,
+  where: { tenantId: string; discoveredDocumentId?: string; instrumentId?: string },
+): Promise<number> {
+  if (!(await hasPgvector(prisma))) return 0;
+  const chunks = await prisma.documentChunk.findMany({
+    where: {
+      tenantId: where.tenantId,
+      ...(where.discoveredDocumentId ? { discoveredDocumentId: where.discoveredDocumentId } : {}),
+      ...(where.instrumentId ? { instrumentId: where.instrumentId } : {}),
+    },
+    select: { id: true, embedding: true },
+    take: 5000,
+  });
+  let n = 0;
+  for (const c of chunks) {
+    if (!Array.isArray(c.embedding) || !c.embedding.length) continue;
+    if (await syncChunkEmbeddingVec(prisma, c.id, c.embedding as number[])) n += 1;
+  }
+  return n;
+}
+
 export type PgvectorHit = { id: string; semantic: number };
 
 /**

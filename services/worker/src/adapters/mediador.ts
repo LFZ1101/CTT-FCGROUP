@@ -136,8 +136,10 @@ export async function fetchMediadorPage(
       last.status === 429 ||
       last.status === 503 ||
       last.status === 502 ||
-      (last.status === 0 && /abort|timeout|network|fetch/i.test(last.reason || ''));
-    if (last.ok || last.blocked || !retryable || i === attempts - 1) {
+      (last.status === 0 && /abort|timeout|network|fetch|ENOTFOUND|ECONN|Failed/i.test(last.reason || ''));
+    // Challenge/CAPTCHA (blocked sem status retryable) não deve retentar nem abrir circuit por engano.
+    const hardBlock = last.blocked && ![429, 502, 503].includes(last.status);
+    if (last.ok || hardBlock || !retryable || i === attempts - 1) {
       return last;
     }
     await new Promise((r) => setTimeout(r, baseDelay * (i + 1)));
@@ -191,12 +193,13 @@ async function fetchMediadorPageOnce(
       reason: block.reason || (response.ok ? 'stealth_http' : undefined),
     };
   } catch (error: any) {
+    // Erro de transporte ≠ challenge: não marca blocked (evita abrir circuit / abortar retry).
     return {
       ok: false,
       status: 0,
       finalUrl: url,
       html: '',
-      blocked: true,
+      blocked: false,
       reason: String(error?.message || error),
     };
   } finally {
