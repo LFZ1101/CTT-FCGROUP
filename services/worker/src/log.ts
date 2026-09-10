@@ -6,7 +6,7 @@ export function workerLog(
 ) {
   const line = JSON.stringify({
     ts: new Date().toISOString(),
-    service: 'cct-intelligence-worker',
+    service: process.env.OTEL_SERVICE_NAME || 'cct-intelligence-worker',
     level,
     msg,
     ...fields,

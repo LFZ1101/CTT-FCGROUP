@@ -53,10 +53,11 @@ Worker consome `source-monitoring`, `document-download`, `document-parse`. Inter
 
 ## Observabilidade
 
-- Respostas incluem / aceitam `x-request-id`
-- `GET /health` — api/db/redis + flag Sentry
+- Respostas incluem / aceitam `x-request-id` e `traceparent`
+- `GET /health` — api/db/redis + flags Sentry/OTel
 - `GET /health/metrics` — contadores e latência p50/p95/p99 (por processo)
 - Sentry: `SENTRY_DSN` (opcional)
+- OTel lite: `OTEL_EXPORTER_OTLP_ENDPOINT` (+ `OTEL_SERVICE_NAME`, `OTEL_ENABLED`)
 - Worker: logs JSON com `jobId`
 
 ## Webhooks / Mediador

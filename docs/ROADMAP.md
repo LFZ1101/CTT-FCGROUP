@@ -23,7 +23,7 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 16 | Busca documental | DONE_NEEDS_TESTS |
 | 17 | Dashboard enriquecido | DONE_NEEDS_TESTS |
 | 18 | UX/UI polish | PARTIAL (painel folha no comparador) |
-| 19 | Observabilidade | DONE_NEEDS_TESTS (health + metrics + requestId + Sentry opt) |
+| 19 | Observabilidade | DONE_NEEDS_TESTS (health + metrics + requestId + Sentry + OTel lite) |
 | 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + Redis RL + tenantSlug + FK) |
 | 21 | Testes completos | PARTIAL → integration multi-tenant feito |
 | 22 | Documentação | DONE_NEEDS_TESTS |
@@ -31,5 +31,5 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 
 ## Próximos (não bloqueantes)
 
-- OpenTelemetry traces
 - Mediador anti-bot avançado (automação controlada)
+- OTel SDK completo / auto-instrumentation

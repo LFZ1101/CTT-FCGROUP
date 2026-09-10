@@ -3,6 +3,7 @@ import { PrismaService } from '../database/prisma.service';
 import { Redis } from 'ioredis';
 import { metricsRegistry } from './observability/metrics';
 import { isSentryEnabled } from './observability/sentry';
+import { otelSnapshot } from './observability/tracing';
 
 @Controller('health')
 export class HealthController {
@@ -50,6 +51,7 @@ export class HealthController {
       service: 'cct-intelligence-api',
       version: process.env.APP_VERSION || 'dev',
       sentry: isSentryEnabled(),
+      otel: otelSnapshot(),
       checks,
       timestamp: new Date().toISOString(),
     };

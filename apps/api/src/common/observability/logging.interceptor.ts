@@ -1,6 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor, Logger } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { metricsRegistry } from './metrics';
+import { endSpan } from './tracing';
 import type { RequestWithId } from './request-id.middleware';
 
 @Injectable()
@@ -25,10 +26,18 @@ export class LoggingInterceptor implements NestInterceptor {
           const durationMs = Date.now() - started;
           const statusCode = res.statusCode || 200;
           metricsRegistry.observe(statusCode, durationMs);
+          if (req.otelSpan) {
+            req.otelSpan.attributes['http.status_code'] = statusCode;
+            req.otelSpan.attributes['http.duration_ms'] = durationMs;
+            if (user?.tenantId) req.otelSpan.attributes['cct.tenant_id'] = user.tenantId;
+            endSpan(req.otelSpan, statusCode >= 500 ? 'error' : 'ok');
+          }
           this.logger.log(
             JSON.stringify({
               msg: 'request',
               requestId,
+              traceId: req.traceId,
+              spanId: req.spanId,
               method,
               path,
               statusCode,
@@ -45,10 +54,18 @@ export class LoggingInterceptor implements NestInterceptor {
               ? Number((err as { status?: number }).status) || 500
               : 500;
           metricsRegistry.observe(statusCode, durationMs);
+          if (req.otelSpan) {
+            req.otelSpan.attributes['http.status_code'] = statusCode;
+            req.otelSpan.attributes['http.duration_ms'] = durationMs;
+            req.otelSpan.attributes.error = err instanceof Error ? err.message : String(err);
+            endSpan(req.otelSpan, 'error');
+          }
           this.logger.error(
             JSON.stringify({
               msg: 'request_error',
               requestId,
+              traceId: req.traceId,
+              spanId: req.spanId,
               method,
               path,
               statusCode,

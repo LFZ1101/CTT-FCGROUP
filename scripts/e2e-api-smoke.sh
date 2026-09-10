@@ -35,5 +35,8 @@ python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('accessToke
 COMPANIES=$(curl -sS -D /tmp/e2e-headers.txt -H "Authorization: Bearer ${TOKEN}" "http://127.0.0.1:${PORT}/api/v1/companies")
 python3 -c "import json,sys; rows=json.loads(sys.argv[1]); assert isinstance(rows, list); print('e2e ok companies', len(rows))" "$COMPANIES"
 grep -qi 'x-request-id:' /tmp/e2e-headers.txt
+grep -qi 'traceparent:' /tmp/e2e-headers.txt
 METRICS=$(curl -sS "http://127.0.0.1:${PORT}/health/metrics")
 python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert 'requests' in d; print('e2e metrics ok', d.get('requests'))" "$METRICS"
+HEALTH=$(curl -sS "http://127.0.0.1:${PORT}/health")
+python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert 'otel' in d; print('e2e health otel', d.get('otel'))" "$HEALTH"

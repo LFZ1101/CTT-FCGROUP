@@ -2,7 +2,7 @@
 
 Plataforma SaaS de inteligência trabalhista para escritórios contábeis.
 
-Base atual: **Fases 1–3T** (pipeline → push → preferências de notificação).
+Base atual: **Fases 1–3U** (pipeline → prefs → OpenTelemetry lite).
 
 ## Stack
 

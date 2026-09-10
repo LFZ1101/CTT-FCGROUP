@@ -9,6 +9,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { initSentry, flushSentry } from './common/observability/sentry';
+import { flushOtel } from './common/observability/tracing';
 
 async function bootstrap() {
   await initSentry();
@@ -19,6 +20,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT || 4000);
 
   const shutdown = async () => {
+    await flushOtel();
     await flushSentry();
     await app.close();
     process.exit(0);

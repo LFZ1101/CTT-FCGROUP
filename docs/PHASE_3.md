@@ -194,7 +194,12 @@
 - `GET|PUT /notifications/preferences` + UI em `/alertas`
 - Fan-out respeita preferências; ADR 0008
 
+## 3U — OpenTelemetry lite (entregue)
+
+- `traceparent` W3C + spans HTTP + export OTLP JSON opcional
+- Health `otel` snapshot; ADR 0009
+
 ## Próximo
 
-- OpenTelemetry traces
 - Mediador anti-bot avançado (browser automation controlada)
+- OTel SDK completo / auto-instrumentation (opcional)

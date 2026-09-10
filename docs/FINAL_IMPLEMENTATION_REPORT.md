@@ -72,6 +72,7 @@
 23. Webhooks de alerta + gate/fixture Mediador; ADR 0006
 24. Web Push VAPID (subscribe + fan-out); ADR 0007
 25. Preferências de notificação por usuário; ADR 0008
+26. OpenTelemetry lite (traceparent + OTLP JSON); ADR 0009
 
 ## Arquitetura final
 
@@ -125,7 +126,7 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvect
 - OCR para PDFs escaneados
 - Build/push de imagens Docker em registry
 - UX polish / acessibilidade formal
-- Observabilidade OTel traces (há Sentry/metrics/requestId)
+- OTel SDK completo / auto-instrumentation (há tracer lite + OTLP)
 - OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
 
 ## Riscos
@@ -157,5 +158,5 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Próximos passos
 
-1. OpenTelemetry traces
-2. Mediador anti-bot avançado
+1. Mediador anti-bot avançado
+2. OTel SDK completo (opcional)
