@@ -97,6 +97,42 @@ export default function VigilanciaPage() {
             </tr>
           ))}
         </DataTable>
+
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panelhead">
+            <h2>Cobertura por sindicato</h2>
+            <span>
+              Mediador + site + base colaborativa
+              {typeof m.collaborativeAvailable === 'number'
+                ? ` · ${m.collaborativeAvailable} collab`
+                : ''}
+            </span>
+          </div>
+          <DataTable
+            headers={['Sindicato', 'Empresas', 'Mediador', 'Site', 'Colaborativa', 'Status']}
+            empty={!data?.unions?.length}
+          >
+            {(data?.unions || []).map((u: any) => (
+              <tr key={u.id}>
+                <td className="titlecell">
+                  <b>
+                    <Link href={`/sindicatos/${u.id}`}>{u.name}</Link>
+                  </b>
+                </td>
+                <td>{u.companiesLinked}</td>
+                <td>{u.mediador || '—'}</td>
+                <td>{u.unionSite || '—'}</td>
+                <td>{u.collaborative || '—'}</td>
+                <td>
+                  <span className={`badge ${u.overallStatus === 'ATENÇÃO' ? 'warn' : 'ok'}`}>
+                    {u.overallStatus || '—'}
+                  </span>
+                  <div className="feedmeta">{u.overallNote || ''}</div>
+                </td>
+              </tr>
+            ))}
+          </DataTable>
+        </section>
       </div>
     </Shell>
   );

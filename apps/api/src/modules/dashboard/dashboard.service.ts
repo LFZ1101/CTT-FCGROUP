@@ -29,6 +29,9 @@ export class DashboardService {
       pendingLinks,
       coverageCompanies,
       mediador,
+      collabPending,
+      networkPublished,
+      requestsFulfilled,
     ] = await Promise.all([
       this.prisma.company.count({ where: { tenantId, active: true } }),
       this.prisma.collectiveInstrument.count({
@@ -114,6 +117,27 @@ export class DashboardService {
         where: { tenantId, type: 'MEDIADOR_MTE' },
         select: { lastCheckedAt: true, lastSuccessAt: true },
       }),
+      this.prisma.collaborativeContribution.count({
+        where: {
+          tenantId,
+          moderationStatus: 'PENDING',
+          sharingScope: { not: 'PRIVATE' },
+        },
+      }),
+      this.prisma.alert.count({
+        where: {
+          tenantId,
+          type: 'COLLABORATIVE_DOCUMENT_AVAILABLE',
+          createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      this.prisma.documentRequest.count({
+        where: {
+          tenantId,
+          status: 'FULFILLED',
+          fulfilledAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      }),
     ]);
 
     const coverage = computePortfolioCoverage(coverageCompanies as any);
@@ -139,6 +163,14 @@ export class DashboardService {
             href: '/vigilancia',
           }
         : null,
+      collabPending > 0
+        ? {
+            code: 'COLLAB_REVIEW',
+            severity: 'INFO',
+            text: `${collabPending} contribuição(ões) colaborativa(s) aguardando revisão`,
+            href: '/rede/moderacao',
+          }
+        : null,
     ].filter(Boolean);
 
     return {
@@ -154,6 +186,9 @@ export class DashboardService {
         newInstruments,
         criticalDeadlines,
         coveragePct: coverage.coveragePct,
+        collaborativePendingReview: collabPending,
+        collaborativeNetworkNew: networkPublished,
+        documentRequestsFulfilled: requestsFulfilled,
       },
       attention,
       coverage,

@@ -1,4 +1,4 @@
-# Roadmap — CCT Intelligence (reordenado pelo feedback 001)
+# Roadmap — CCT Intelligence (reordenado pelo feedback 001 + Base Colaborativa)
 
 Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLOCKED**
 
@@ -19,6 +19,7 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 11 | Alertas de prazo | DONE_NEEDS_TESTS |
 | 12 | Relação sindicato → empresas | DONE_NEEDS_TESTS |
 | 13 | Empresas potencialmente impactadas | DONE_NEEDS_TESTS |
+| **13b** | **Base / Rede Colaborativa de CCTs** | **DONE_NEEDS_TESTS** |
 
 ## P1 — Diferenciais
 
@@ -30,6 +31,8 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 17 | Comparação interna → principais mudanças | DONE_NEEDS_TESTS |
 | 18 | Import CSV vínculos | NOT_STARTED |
 | 19 | Busca documental | DONE_NEEDS_TESTS (secundária) |
+| 19b | Match oficial avançado (metadados/similaridade além de hash) | DONE_NEEDS_TESTS |
+| 19c | Papel MODERATOR cross-tenant | NOT_STARTED |
 
 ## P2 — Expansão
 
@@ -43,3 +46,5 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 ## Roadmap legado (pipeline 0–23)
 
 Preservado: storage, parse, classificação, cláusulas, validação, RAG, observabilidade, auth multi-tenant, OCR opt, push/prefs, OTel lite, Mediador stealth/browser. Ver `docs/PHASE_3.md` e commits anteriores.
+
+Base colaborativa: ver `docs/COLLABORATIVE_NETWORK.md`.

@@ -93,6 +93,12 @@ export default function DocumentosPage() {
                     </div>
                     <div className="feedmeta">
                       Documento · {d.documentClass || '—'} · {d.processingStatus}
+                      {d.originBadge ? (
+                        <>
+                          {' '}
+                          · <span className={`badge ${d.originBadge === 'OFICIAL' ? 'ok' : d.originBadge === 'COLABORATIVO' ? 'warn' : ''}`}>{d.originBadge}</span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -128,6 +134,19 @@ export default function DocumentosPage() {
                   <Link href={`/documentos/${x.id}`}>{x.title || x.url}</Link>
                 </b>
                 <span>{x.source?.name || 'Fonte'}</span>
+                {x.source?.type === 'COLLABORATIVE_NETWORK' ? (
+                  <span className="badge warn" style={{ marginLeft: 6 }}>
+                    COLABORATIVO
+                  </span>
+                ) : x.source?.type === 'MEDIADOR_MTE' ? (
+                  <span className="badge ok" style={{ marginLeft: 6 }}>
+                    OFICIAL
+                  </span>
+                ) : x.source?.type === 'LABOR_UNION' || x.source?.type === 'EMPLOYER_UNION' ? (
+                  <span className="badge" style={{ marginLeft: 6 }}>
+                    SINDICATO
+                  </span>
+                ) : null}
               </td>
               <td>{x.documentClass || '—'}</td>
               <td>

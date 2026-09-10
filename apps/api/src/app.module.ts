@@ -24,6 +24,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MatchingModule } from './modules/matching/matching.module';
 import { SurveillanceModule } from './modules/surveillance/surveillance.module';
 import { DeadlinesModule } from './modules/deadlines/deadlines.module';
+import { CollaborativeModule } from './modules/collaborative/collaborative.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { DeadlinesModule } from './modules/deadlines/deadlines.module';
     MatchingModule,
     SurveillanceModule,
     DeadlinesModule,
+    CollaborativeModule,
   ],
   controllers: [HealthController],
   providers: [

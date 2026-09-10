@@ -111,6 +111,11 @@ export class RagService {
       }
     }
 
+    const originMeta = await this.resolveOriginDisclaimer(tenantId, dto.documentId, dto.instrumentId);
+    if (originMeta && !built.insufficientEvidence) {
+      answer = `${answer}\n\nFonte: ${originMeta.sourceTitle}\nOrigem: ${originMeta.originLabel}\nStatus: ${originMeta.statusLabel}`;
+    }
+
     await this.prisma.auditLog.create({
       data: {
         tenantId,
@@ -126,6 +131,7 @@ export class RagService {
           semanticScore: hits[0]?.semanticScore ?? 0,
           citationCount: built.citations.length,
           provider,
+          origin: originMeta,
         },
       },
     });
@@ -135,6 +141,7 @@ export class RagService {
       answer,
       insufficientEvidence: built.insufficientEvidence,
       provider,
+      origin: originMeta,
       scope: {
         documentId: dto.documentId ?? null,
         instrumentId: dto.instrumentId ?? null,
@@ -147,8 +154,91 @@ export class RagService {
           instrumentClauseId: row?.instrumentClauseId ?? null,
           discoveredDocumentId: row?.discoveredDocumentId ?? null,
           instrumentId: row?.instrumentId ?? null,
+          originLabel: originMeta?.originLabel ?? null,
         };
       }),
+    };
+  }
+
+  private async resolveOriginDisclaimer(
+    tenantId: string,
+    documentId?: string,
+    instrumentId?: string,
+  ) {
+    let doc = null as null | {
+      title: string | null;
+      source: { type: string; name: string };
+      collaborativeContributions: Array<{
+        status: string;
+        confirmedByOfficialSourceAt: Date | null;
+        moderationStatus: string;
+      }>;
+    };
+
+    if (documentId) {
+      doc = await this.prisma.discoveredDocument.findFirst({
+        where: { id: documentId, tenantId },
+        select: {
+          title: true,
+          source: { select: { type: true, name: true } },
+          collaborativeContributions: {
+            select: { status: true, confirmedByOfficialSourceAt: true, moderationStatus: true },
+            take: 1,
+            orderBy: { submittedAt: 'desc' },
+          },
+        },
+      });
+    } else if (instrumentId) {
+      const linked = await this.prisma.discoveredDocument.findFirst({
+        where: { tenantId, instrumentId },
+        select: {
+          title: true,
+          source: { select: { type: true, name: true } },
+          collaborativeContributions: {
+            select: { status: true, confirmedByOfficialSourceAt: true, moderationStatus: true },
+            take: 1,
+            orderBy: { submittedAt: 'desc' },
+          },
+        },
+      });
+      doc = linked;
+    }
+    if (!doc) return null;
+
+    const contrib = doc.collaborativeContributions[0];
+    const isCollab = doc.source.type === 'COLLABORATIVE_NETWORK' || Boolean(contrib);
+    if (!isCollab && doc.source.type === 'MEDIADOR_MTE') {
+      return {
+        sourceTitle: doc.title || 'Documento',
+        originLabel: 'Mediador/MTE',
+        statusLabel: 'Fonte oficial',
+        badge: 'OFICIAL',
+      };
+    }
+    if (!isCollab && (doc.source.type === 'LABOR_UNION' || doc.source.type === 'EMPLOYER_UNION')) {
+      return {
+        sourceTitle: doc.title || 'Documento',
+        originLabel: 'Site oficial do sindicato',
+        statusLabel: 'Fonte sindical',
+        badge: 'SINDICATO',
+      };
+    }
+    if (isCollab) {
+      const confirmed = Boolean(contrib?.confirmedByOfficialSourceAt);
+      return {
+        sourceTitle: doc.title || 'Documento',
+        originLabel: 'Base Colaborativa',
+        statusLabel: confirmed
+          ? 'Confirmado posteriormente em fonte oficial'
+          : 'Ainda não confirmada em fonte oficial',
+        badge: 'COLABORATIVO',
+      };
+    }
+    return {
+      sourceTitle: doc.title || 'Documento',
+      originLabel: doc.source.name,
+      statusLabel: doc.source.type,
+      badge: null,
     };
   }
 

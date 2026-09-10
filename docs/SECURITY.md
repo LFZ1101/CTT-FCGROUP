@@ -10,6 +10,7 @@
 - Validação de DTOs (`class-validator`).
 - Uploads/downloads via storage; URLs assinadas com expiração.
 - Hash SHA-256 de conteúdo; allowlist MIME no worker.
+- Base colaborativa: consentimento versionado (`collaborative-share-v1`) auditado; publicação só via `CollaborativePublication`; consumidores não veem identidade do colaborador; upload com MIME real (`file-type`), limite de tamanho e storage privado + signed URL.
 - Rate limit de login: Redis atômico (`INCR`+`PEXPIRE`) com fallback em memória — buckets `email:` e `slug:email`.
 - Validação de ownership de FKs (empresa/instrumento/sindicato/usuário) no mesmo tenant em alerts/tasks/sources.
 - Unsubscribe de Web Push escopado por `userId`.
@@ -19,6 +20,7 @@
 - Nunca confiar em `tenantId` do body do cliente.
 - Não commit de secrets; usar `.env` local e secrets no deploy.
 - CORS: configurar conforme `APP_URL` no deploy.
+- Nunca consultar `Documents` de todos os tenants para “rede”; usar a camada de publicação.
 
 ## Lacunas conhecidas
 
