@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { TenantOwnershipService } from '../../common/tenancy/tenant-ownership.service';
 import { CreateSourceDto, UpdateSourceDto } from './dto/source.dto';
@@ -36,6 +37,9 @@ export class SourcesService {
         name: dto.name,
         url: dto.url,
         unionId: dto.unionId,
+        ...(dto.config !== undefined
+          ? { config: dto.config as Prisma.InputJsonValue }
+          : {}),
       },
     });
   }
@@ -51,6 +55,14 @@ export class SourcesService {
         ...(dto.url !== undefined ? { url: dto.url } : {}),
         ...(dto.unionId !== undefined ? { unionId: dto.unionId || null } : {}),
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+        ...(dto.config !== undefined
+          ? {
+              config:
+                dto.config === null
+                  ? Prisma.JsonNull
+                  : (dto.config as Prisma.InputJsonValue),
+            }
+          : {}),
       },
       include: { union: true },
     });

@@ -6,6 +6,18 @@ import { DataTable } from '../../components/DataTable';
 import ModalForm from '../../components/ModalForm';
 import { api } from '../../lib/api';
 
+const ADAPTERS = [
+  { id: 'generic-html', label: 'HTML genérico' },
+  { id: 'pdf-listing', label: 'Listagem de PDFs' },
+  { id: 'wordpress-media', label: 'WordPress / uploads' },
+  { id: 'custom', label: 'Customizado (filtros)' },
+];
+
+function adapterLabel(config: unknown) {
+  const id = (config as { adapter?: string } | null)?.adapter;
+  return ADAPTERS.find((a) => a.id === id)?.label || 'HTML genérico';
+}
+
 export default function Fontes() {
   const [rows, setRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -17,9 +29,27 @@ export default function Fontes() {
   async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const type = String(f.get('type') || '');
+    const adapter = String(f.get('adapter') || 'generic-html');
+    const keywords = String(f.get('linkKeywords') || '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const config =
+      type === 'MEDIADOR_MTE'
+        ? undefined
+        : {
+            adapter,
+            ...(keywords.length ? { linkKeywords: keywords } : {}),
+          };
     await api('/sources', {
       method: 'POST',
-      body: JSON.stringify({ type: f.get('type'), name: f.get('name'), url: f.get('url') }),
+      body: JSON.stringify({
+        type,
+        name: f.get('name'),
+        url: f.get('url'),
+        ...(config ? { config } : {}),
+      }),
     });
     setOpen(false);
     load();
@@ -36,7 +66,7 @@ export default function Fontes() {
         <PageHeader
           eyebrow="Monitoramento"
           title="Fontes oficiais"
-          description="Mediador, sindicatos e demais origens que alimentarão o motor de coleta."
+          description="Mediador, sindicatos e demais origens com adapters de coleta configuráveis."
           action={
             <button className="primary" onClick={() => setOpen(true)}>
               + Nova fonte
@@ -44,7 +74,7 @@ export default function Fontes() {
           }
         />
         <DataTable
-          headers={['Fonte', 'Tipo', 'URL', 'Última consulta', 'Último sucesso', 'Status', 'Ação']}
+          headers={['Fonte', 'Tipo', 'Adapter', 'URL', 'Última consulta', 'Último sucesso', 'Status', 'Ação']}
           empty={!rows.length}
         >
           {rows.map((x) => (
@@ -54,6 +84,7 @@ export default function Fontes() {
                 <span>{x.union?.acronym || 'Fonte geral'}</span>
               </td>
               <td>{x.type}</td>
+              <td>{x.type === 'MEDIADOR_MTE' ? 'mediador' : adapterLabel(x.config)}</td>
               <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.url}</td>
               <td>
                 {x.lastCheckedAt ? new Date(x.lastCheckedAt).toLocaleString('pt-BR') : 'Ainda não consultada'}
@@ -84,12 +115,26 @@ export default function Fontes() {
             </select>
           </div>
           <div className="field">
+            <label>Adapter (sites sindicais)</label>
+            <select name="adapter" defaultValue="generic-html">
+              {ADAPTERS.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
             <label>Nome</label>
             <input name="name" required />
           </div>
           <div className="field full">
             <label>URL monitorada</label>
             <input name="url" type="url" required placeholder="https://" />
+          </div>
+          <div className="field full">
+            <label>Palavras-chave extras (opcional, vírgula)</label>
+            <input name="linkKeywords" placeholder="cct, convenção, aditivo" />
           </div>
           <div className="field full">
             <button className="primary">Salvar fonte</button>
