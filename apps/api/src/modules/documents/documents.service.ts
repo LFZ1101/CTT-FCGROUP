@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  OnModuleDestroy,
 } from '@nestjs/common';
 // BadRequestException used by signedUrl
 import { Queue } from 'bullmq';
@@ -11,7 +12,8 @@ import { PrismaService } from '../../database/prisma.service';
 import { StorageService } from '../../storage/storage.service';
 
 @Injectable()
-export class DocumentsService {
+export class DocumentsService implements OnModuleDestroy {
+  private readonly connection: Redis;
   private readonly downloadQueue: Queue;
   private readonly parseQueue: Queue;
 
@@ -19,11 +21,17 @@ export class DocumentsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
   ) {
-    const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    this.connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
-    this.downloadQueue = new Queue('document-download', { connection });
-    this.parseQueue = new Queue('document-parse', { connection });
+    this.downloadQueue = new Queue('document-download', { connection: this.connection });
+    this.parseQueue = new Queue('document-parse', { connection: this.connection });
+  }
+
+  async onModuleDestroy() {
+    await this.downloadQueue.close();
+    await this.parseQueue.close();
+    this.connection.disconnect();
   }
 
   list(tenantId: string) {

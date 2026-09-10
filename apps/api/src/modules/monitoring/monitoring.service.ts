@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { PrismaService } from '../../database/prisma.service';
@@ -8,14 +13,20 @@ import { PrismaService } from '../../database/prisma.service';
  * A API não faz scrape inline — evita duplicação com o worker/adaptador Mediador.
  */
 @Injectable()
-export class MonitoringService {
+export class MonitoringService implements OnModuleDestroy {
+  private readonly connection: Redis;
   private readonly monitorQueue: Queue;
 
   constructor(private readonly prisma: PrismaService) {
-    const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    this.connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
-    this.monitorQueue = new Queue('source-monitoring', { connection });
+    this.monitorQueue = new Queue('source-monitoring', { connection: this.connection });
+  }
+
+  async onModuleDestroy() {
+    await this.monitorQueue.close();
+    this.connection.disconnect();
   }
 
   history(tenantId: string, sourceId?: string) {

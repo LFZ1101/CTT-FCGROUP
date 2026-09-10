@@ -84,6 +84,7 @@ export async function indexChunksForDocument(
         ...payload(c.text, c.title, c.number, String(c.category)),
       })),
     });
+    await syncEmbeddingsToPgvector(prisma, input.tenantId, { discoveredDocumentId: input.documentId });
     return doc.clauses.length;
   }
 
@@ -101,10 +102,45 @@ export async function indexChunksForDocument(
         ...payload(p.text, `Página ${p.pageNumber}`),
       })),
     });
+    await syncEmbeddingsToPgvector(prisma, input.tenantId, { discoveredDocumentId: input.documentId });
     return doc.pages.length;
   }
 
   return 0;
+}
+
+async function syncEmbeddingsToPgvector(
+  prisma: PrismaClient,
+  tenantId: string,
+  scope: { discoveredDocumentId?: string; instrumentId?: string },
+) {
+  try {
+    const ext = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+      SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') AS "exists"
+    `;
+    if (!ext[0]?.exists) return;
+    const rows = await prisma.documentChunk.findMany({
+      where: {
+        tenantId,
+        ...(scope.discoveredDocumentId
+          ? { discoveredDocumentId: scope.discoveredDocumentId }
+          : {}),
+        ...(scope.instrumentId ? { instrumentId: scope.instrumentId } : {}),
+      },
+      select: { id: true, embedding: true },
+    });
+    for (const row of rows) {
+      if (!Array.isArray(row.embedding)) continue;
+      const lit = `[${(row.embedding as number[]).map((v) => Number(v).toFixed(6)).join(',')}]`;
+      await prisma.$executeRawUnsafe(
+        `UPDATE "DocumentChunk" SET "embeddingVec" = $1::vector WHERE id = $2`,
+        lit,
+        row.id,
+      );
+    }
+  } catch {
+    /* pgvector opcional no ambiente local sem extensão */
+  }
 }
 
 export async function indexChunksForInstrument(
@@ -143,5 +179,6 @@ export async function indexChunksForInstrument(
     })),
   });
 
+  await syncEmbeddingsToPgvector(prisma, input.tenantId, { instrumentId: input.instrumentId });
   return instrument.clauses.length;
 }

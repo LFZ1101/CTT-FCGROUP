@@ -53,7 +53,7 @@ export class RagService {
       );
     }
 
-    const hits = retrieveChunks(
+    const hitsHybrid = retrieveChunks(
       question,
       chunks.map((c) => ({
         id: c.id,
@@ -68,15 +68,45 @@ export class RagService {
       dto.topK ?? 5,
     );
 
+    // Boost com ranking pgvector quando a extensão estiver disponível.
+    let hits = hitsHybrid;
+    let provider: string = `hybrid-${EMBEDDING_MODEL}`;
+    try {
+      const { hasPgvector, searchByPgvector } = await import('./pgvector');
+      if (await hasPgvector(this.prisma)) {
+        const qEmb = embedText(question);
+        const vecHits = await searchByPgvector(this.prisma, {
+          tenantId,
+          embedding: qEmb,
+          limit: Math.max(dto.topK ?? 5, 10),
+          documentId: dto.documentId,
+          instrumentId: dto.instrumentId,
+        });
+        if (vecHits.length) {
+          const byId = new Map(hitsHybrid.map((h) => [h.id, h]));
+          for (const v of vecHits) {
+            const existing = byId.get(v.id);
+            if (existing) {
+              existing.semanticScore = Math.max(existing.semanticScore, v.semantic);
+              existing.score = Math.max(existing.score, 0.55 * existing.score + 0.45 * v.semantic);
+            }
+          }
+          hits = [...byId.values()].sort((a, b) => b.score - a.score).slice(0, dto.topK ?? 5);
+          provider = `hybrid-${EMBEDDING_MODEL}+pgvector`;
+        }
+      }
+    } catch {
+      /* pgvector opcional */
+    }
+
     const built = buildExtractiveAnswer(question, hits);
     let answer = built.answer;
-    let provider: string = `hybrid-${EMBEDDING_MODEL}`;
 
     if (!built.insufficientEvidence && process.env.OPENAI_API_KEY) {
       const synthesized = await this.synthesizeWithOpenAI(question, hits.slice(0, 3));
       if (synthesized) {
         answer = synthesized;
-        provider = `hybrid-${EMBEDDING_MODEL}+openai`;
+        provider = `${provider}+openai`;
       }
     }
 

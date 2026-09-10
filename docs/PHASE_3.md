@@ -137,9 +137,16 @@
 - UI revisão documental: checklist, aprovar metadados / marcar ajustes (`POST /documents/:id/review` + AuditLog).
 - Monitoramento UI informa enfileiramento assíncrono.
 
+## 3M — Isolamento HTTP/API, Mediador real, pgvector opcional
+
+- Testes integração multi-tenant (Prisma + AuthService/guards) + packaging migrations + review persistence
+- `reflect-metadata` no bootstrap; Redis quit no destroy (Documents/Monitoring)
+- E2E smoke script + step no CI
+- Adaptador Mediador com fetch, detecção de bloqueio, fixtures e ADR 0002
+- pgvector opcional (`embeddingVec`), dual-write, boost no RAG; compose/CI com `pgvector/pgvector:pg16`; ADR 0003
+
 ## Próximo
 
+- Motor de impacto em folha
 - Notificações e-mail
-- Mediador contra portal real
-- pgvector / impacto em folha
-- E2E HTTP bearer cross-tenant
+- E2E HTTP bearer completo em Nest compilado (smoke já cobre login)

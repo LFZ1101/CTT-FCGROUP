@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_DB: cct_intelligence
           POSTGRES_USER: cct
@@ -57,3 +57,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: E2E API smoke
+        run: bash scripts/e2e-api-smoke.sh
+        env:
+          E2E_PORT: 4010
+          JWT_SECRET: ci-test-secret
+          DATABASE_URL: postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public
+          REDIS_URL: redis://localhost:6379

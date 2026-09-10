@@ -581,7 +581,7 @@ model DocumentClause {
   @@index([tenantId, category])
 }
 
-/// Chunks de RAG (prioridade: cláusula). Embedding JSON opcional para futuro pgvector/OpenAI.
+/// Chunks de RAG (prioridade: cláusula). Embedding JSON + coluna nativa pgvector.
 model DocumentChunk {
   id                   String   @id @default(cuid())
   tenantId             String
@@ -596,7 +596,10 @@ model DocumentChunk {
   category             String?
   text                 String
   metadata             Json?
+  /// Embedding hashing-v1 (JSON) — sempre preenchido.
   embedding            Json?
+  /// Coluna nativa pgvector (256). Preenchida quando a extensão está disponível.
+  embeddingVec         Unsupported("vector(256)")?
   modelVersion         String   @default("heuristic-v1")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

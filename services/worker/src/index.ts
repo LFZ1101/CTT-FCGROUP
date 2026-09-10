@@ -21,6 +21,8 @@ import {
   extractMediadorLinks,
   isMediadorUrl,
   mergeCandidates,
+  fetchMediadorPage,
+  detectMediadorBlock,
 } from './adapters/mediador.js';
 import { extensionForMime, isAllowedMime } from './mime.js';
 import { extractPages } from './extract.js';
@@ -94,16 +96,53 @@ async function monitorSource(sourceId: string) {
   });
 
   try {
-    const response = await fetch(source.url, {
-      redirect: 'follow',
-      headers: { 'user-agent': 'CCT-Intelligence-Monitor/1.0 (+compliance; contact-admin)' },
-    });
-    const html = await response.text();
-    const generic = extractCandidateLinks(html, source.url);
-    const mediadorExtra =
-      source.type === 'MEDIADOR_MTE' || isMediadorUrl(source.url)
-        ? extractMediadorLinks(html, source.url)
-        : [];
+    const isMediador = source.type === 'MEDIADOR_MTE' || isMediadorUrl(source.url);
+    const response = isMediador
+      ? await fetchMediadorPage(source.url)
+      : await (async () => {
+          const res = await fetch(source.url, {
+            redirect: 'follow',
+            headers: { 'user-agent': 'CCT-Intelligence-Monitor/1.0 (+compliance; contact-admin)' },
+          });
+          const html = await res.text();
+          const block = detectMediadorBlock(html, res.status);
+          return {
+            ok: res.ok && !block.blocked,
+            status: res.status,
+            finalUrl: res.url || source.url,
+            html,
+            blocked: block.blocked,
+            reason: block.reason,
+          };
+        })();
+
+    if (response.blocked || !response.ok) {
+      await prisma.source.update({
+        where: { id: sourceId },
+        data: { lastCheckedAt: new Date() },
+      });
+      await prisma.sourceCheck.update({
+        where: { id: check.id },
+        data: {
+          status: response.blocked ? 'BLOCKED' : 'HTTP_ERROR',
+          httpStatus: response.status || null,
+          documentsFound: 0,
+          message: response.reason || 'Falha ao consultar fonte',
+          finishedAt: new Date(),
+        },
+      });
+      return {
+        sourceId,
+        blocked: response.blocked,
+        reason: response.reason,
+        httpStatus: response.status,
+      };
+    }
+
+    const html = response.html;
+    const baseUrl = response.finalUrl || source.url;
+    const generic = extractCandidateLinks(html, baseUrl);
+    const mediadorExtra = isMediador ? extractMediadorLinks(html, baseUrl) : [];
     const links = mergeCandidates(generic, mediadorExtra);
     let newDocs = 0;
 
@@ -130,7 +169,12 @@ async function monitorSource(sourceId: string) {
           contentType: link.contentType || null,
           documentHash: createHash('sha256').update(normalizedUrl).digest('hex'),
           processingStatus: DocumentProcessingStatus.DISCOVERED,
-          metadata: { discoveredFrom: source.url },
+          metadata: {
+            discoveredFrom: source.url,
+            ...(link.registration ? { registration: link.registration } : {}),
+            ...(link.requestNumber ? { requestNumber: link.requestNumber } : {}),
+            adapter: isMediador ? 'mediador-v1' : 'generic-html-v1',
+          },
         },
       });
       newDocs++;
