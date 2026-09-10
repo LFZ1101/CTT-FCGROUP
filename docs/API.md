@@ -31,6 +31,7 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | Health | `GET /health`, `GET /health/metrics` (fora do prefixo `api/v1`) |
 | Documentos | `POST /documents/:id/review` — revisão humana do artefato |
 | Payroll | `GET /payroll-impact/comparisons/:comparisonId` |
-| Notificações | `POST /notifications/alerts/email` `{ alertId }` → `{ email, webhook }` |
+| Notificações | `POST /notifications/alerts/email` → `{ email, webhook, push }` |
+| Web Push | `GET /notifications/push/vapid-public-key`, `POST|DELETE /notifications/push/subscribe` |
 
 Mutações sensíveis exigem `@Roles` (OWNER/ADMIN/DP_MANAGER/ANALYST conforme rota). Leituras autenticadas; CLIENT/AUDITOR sem mutação onde RolesGuard aplica.

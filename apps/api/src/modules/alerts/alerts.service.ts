@@ -86,7 +86,9 @@ export class AlertsService {
       if (severity === 'WARNING' || severity === 'CRITICAL') {
         try {
           const result = await this.notifications.notifyAlert(tenantId, alert.id);
-          if (result.email?.sent || result.webhook?.sent) notified++;
+          if (result.email?.sent || result.webhook?.sent || (result.push?.sent ?? 0) > 0) {
+            notified++;
+          }
         } catch (err) {
           this.logger.warn(
             `Falha ao notificar alerta ${alert.id}: ${err instanceof Error ? err.message : String(err)}`,

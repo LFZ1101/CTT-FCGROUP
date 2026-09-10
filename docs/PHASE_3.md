@@ -182,8 +182,14 @@
 - Circuit breaker / intervalo mínimo no worker Mediador
 - `MEDIADOR_MODE=fixture` para staging offline; ADR 0006
 
+## 3S — Web Push VAPID (entregue)
+
+- Modelo `PushSubscription` + migration
+- Endpoints subscribe/unsubscribe + chave pública VAPID
+- Fan-out push em `notifyAlert`; SW + UI em `/alertas`; ADR 0007
+
 ## Próximo
 
-- Web Push (VAPID) / preferências por usuário
+- Preferências de notificação por usuário/tipo
 - OpenTelemetry traces
 - Mediador anti-bot avançado (browser automation controlada)

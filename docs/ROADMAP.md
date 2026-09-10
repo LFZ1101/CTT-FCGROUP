@@ -31,6 +31,6 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 
 ## Próximos (não bloqueantes)
 
-- Web Push (VAPID) e preferências por usuário
+- Preferências de notificação por usuário
 - OpenTelemetry traces
 - Mediador anti-bot avançado (automação controlada)

@@ -4,11 +4,13 @@ import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import { api } from '../../lib/api';
+import { ensurePushSubscription } from '../../lib/push';
 
 export default function Alertas() {
   const [rows, setRows] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
   const load = () => api<any[]>('/alerts').then(setRows).catch(() => {});
   useEffect(() => {
     void load();
@@ -32,31 +34,46 @@ export default function Alertas() {
     load();
   }
 
+  async function enablePush() {
+    setPushBusy(true);
+    try {
+      await ensurePushSubscription(api);
+      setMsg('Web Push ativado neste navegador.');
+    } catch (e: any) {
+      setMsg(e?.message || 'Falha ao ativar Web Push');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
   async function notifyEmail(id: string) {
     setBusyId(id);
     try {
       const r = await api<{
         email?: { sent?: boolean; skipped?: boolean; reason?: string };
         webhook?: { sent?: boolean; skipped?: boolean; reason?: string };
-        sent?: boolean;
-        skipped?: boolean;
-        reason?: string;
+        push?: { sent?: number; skipped?: boolean; reason?: string };
       }>('/notifications/alerts/email', {
         method: 'POST',
         body: JSON.stringify({ alertId: id }),
       });
-      const email = r.email || r;
-      const webhook = r.webhook;
       const parts = [
-        email?.sent
+        r.email?.sent
           ? 'e-mail enviado'
-          : `e-mail não enviado (${email?.reason || (email?.skipped ? 'SMTP' : 'falha')})`,
+          : `e-mail (${r.email?.reason || (r.email?.skipped ? 'SMTP' : 'falha')})`,
       ];
-      if (webhook) {
+      if (r.webhook) {
         parts.push(
-          webhook.sent
+          r.webhook.sent
             ? 'webhook enviado'
-            : `webhook (${webhook.reason || (webhook.skipped ? 'não configurado' : 'falha')})`,
+            : `webhook (${r.webhook.reason || (r.webhook.skipped ? 'off' : 'falha')})`,
+        );
+      }
+      if (r.push) {
+        parts.push(
+          (r.push.sent || 0) > 0
+            ? `push ${r.push.sent}`
+            : `push (${r.push.reason || (r.push.skipped ? 'off' : 'falha')})`,
         );
       }
       setMsg(`Alerta ${id.slice(0, 8)}…: ${parts.join('; ')}.`);
@@ -73,11 +90,16 @@ export default function Alertas() {
         <PageHeader
           eyebrow="Risco e mudanças"
           title="Central de alertas"
-          description="Fila para novas publicações, divergências, vigências e impactos detectados. WARNING/CRITICAL disparam e-mail/webhook no scan (se configurados)."
+          description="WARNING/CRITICAL disparam e-mail, webhook e Web Push (quando configurados)."
           action={
-            <button className="primary" onClick={() => void scanExpiring()}>
-              Verificar vigências
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="secondary" disabled={pushBusy} onClick={() => void enablePush()}>
+                {pushBusy ? 'Ativando…' : 'Ativar Web Push'}
+              </button>
+              <button className="primary" onClick={() => void scanExpiring()}>
+                Verificar vigências
+              </button>
+            </div>
           }
         />
         {msg ? <p className="feedmeta" style={{ marginBottom: 12 }}>{msg}</p> : null}

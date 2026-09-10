@@ -2,7 +2,7 @@
 
 Plataforma SaaS de inteligência trabalhista para escritórios contábeis.
 
-Base atual: **Fases 1–3R** (pipeline → auth/OCR/obs → webhooks + gate Mediador).
+Base atual: **Fases 1–3S** (pipeline → webhooks/gate → Web Push VAPID).
 
 ## Stack
 

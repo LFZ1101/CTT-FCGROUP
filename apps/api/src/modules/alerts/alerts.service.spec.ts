@@ -27,6 +27,7 @@ describe('AlertsService.scanExpiringInstruments', () => {
         return {
           email: { sent: true, messageId: 'm1' },
           webhook: { sent: false, skipped: true, reason: 'webhook_unconfigured' },
+          push: { sent: 0, skipped: true, reason: 'vapid_unconfigured' },
         };
       },
     };

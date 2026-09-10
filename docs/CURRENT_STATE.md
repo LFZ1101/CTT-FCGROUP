@@ -9,15 +9,15 @@
 |---|---|
 | Pipeline 3A–3J + RBAC/CI/isolamento | DONE |
 | Mediador HTTP + retry + gate/fixture | DONE |
-| pgvector / RAG / folha / e-mail | DONE |
+| pgvector / RAG / folha / e-mail / webhook | DONE |
 | Auth tenantSlug + Redis RL | DONE |
 | OCR opt-in | DONE |
 | Observabilidade (requestId/metrics/Sentry) | DONE |
-| Webhooks de alerta | DONE |
+| Web Push VAPID | DONE (opt-in via chaves VAPID) |
 
 ## Limitações
 
 - Mediador: CAPTCHA/JS ainda bloqueiam; gate evita martelar o portal.
-- Webhook ≠ Web Push VAPID (próximo).
+- Push exige HTTPS/localhost + `VAPID_*`.
 - Métricas/circuit por processo.
-- OCR/Sentry/SMTP/webhook só com env.
+- OTel traces ainda não.

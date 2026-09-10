@@ -78,6 +78,7 @@ model Tenant {
   documentClauses DocumentClause[]
   instrumentComparisons InstrumentComparison[]
   documentChunks DocumentChunk[]
+  pushSubscriptions PushSubscription[]
 }
 
 model User {
@@ -96,6 +97,7 @@ model User {
   validations InstrumentValidation[]
   tasks     Task[]   @relation("TaskAssignee")
   auditLogs AuditLog[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -353,6 +355,24 @@ model Alert {
   instrument   CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, readAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  endpoint  String
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, endpoint])
+  @@index([tenantId, userId])
 }
 
 model Task {
