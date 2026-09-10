@@ -21,6 +21,7 @@ export default function Login() {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'setup'>('login');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const [tenantSlug, setTenantSlug] = useState('escritorio-demo');
   const [hintTenants, setHintTenants] = useState<string[]>([]);
 
@@ -33,6 +34,7 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setHintTenants([]);
+    setBusy(true);
     const f = new FormData(e.currentTarget);
     try {
       const payload =
@@ -59,9 +61,12 @@ export default function Login() {
       }
       router.push('/');
     } catch (err: any) {
-      const msg = String(err?.message || 'Falha no acesso');
+      let msg = String(err?.message || 'Não foi possível entrar. Verifique seus dados.');
+      msg = msg
+        .replace(/tenantSlug/gi, 'identificador do escritório')
+        .replace(/Unauthorized/gi, 'Credenciais inválidas');
       setError(msg);
-      const slugMatch = msg.match(/tenantSlug \(([^)]+)\)/i);
+      const slugMatch = String(err?.message || '').match(/tenantSlug \(([^)]+)\)/i);
       if (slugMatch?.[1]) {
         setHintTenants(
           slugMatch[1]
@@ -70,6 +75,8 @@ export default function Login() {
             .filter(Boolean),
         );
       }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -84,38 +91,68 @@ export default function Login() {
           <div className="eyebrow" style={{ color: '#6f7c8d' }}>
             INTELIGÊNCIA TRABALHISTA
           </div>
-          <h1>Da publicação da CCT à ação do DP.</h1>
+          <h1>Controle, clareza e rastreabilidade para o DP.</h1>
           <p>
-            Centralize sua carteira, monitore fontes, valide instrumentos e transforme mudanças
-            coletivas em tarefas rastreáveis.
+            Monitore fontes, valide instrumentos e transforme mudanças coletivas em ações
+            rastreáveis — com evidência e governança.
           </p>
+          <div className="login-points">
+            <div className="login-point">
+              <i />
+              <span>Monitoramento contínuo de fontes oficiais e sindicais</span>
+            </div>
+            <div className="login-point">
+              <i />
+              <span>Alertas e prazos com contexto da carteira</span>
+            </div>
+            <div className="login-point">
+              <i />
+              <span>Rede colaborativa com moderação e origem explícita</span>
+            </div>
+            <div className="login-point">
+              <i />
+              <span>Trilha de auditoria para decisões críticas</span>
+            </div>
+          </div>
         </div>
-        <small style={{ color: '#566271' }}>Plataforma oficial · ambiente seguro multi-tenant</small>
+        <small style={{ color: '#566271' }}>Ambiente seguro · isolamento por escritório</small>
       </section>
       <section className="loginform">
         <div className="loginbox">
           <div className="eyebrow">Acesso seguro</div>
-          <h2>{mode === 'login' ? 'Entre no workspace' : 'Criar primeiro workspace'}</h2>
+          <h2>{mode === 'login' ? 'Entre no escritório' : 'Criar primeiro escritório'}</h2>
           <p>
             {mode === 'login'
-              ? 'Informe o slug do escritório (recomendado) e seu e-mail corporativo.'
+              ? 'Use o identificador do escritório e seu e-mail corporativo.'
               : 'Configuração inicial do escritório e usuário proprietário.'}
           </p>
           <form onSubmit={submit}>
             {mode === 'setup' ? (
               <>
-                <input name="tenantName" placeholder="Nome do escritório" required />
-                <input name="name" placeholder="Seu nome" required />
+                <label className="sr-only" htmlFor="tenantName">
+                  Nome do escritório
+                </label>
+                <input id="tenantName" name="tenantName" placeholder="Nome do escritório" required />
+                <label className="sr-only" htmlFor="name">
+                  Seu nome
+                </label>
+                <input id="name" name="name" placeholder="Seu nome" required />
               </>
             ) : (
-              <input
-                name="tenantSlug"
-                placeholder="Slug do workspace (ex.: escritorio-demo)"
-                value={tenantSlug}
-                onChange={(e) => setTenantSlug(e.target.value)}
-                list="tenant-slug-hints"
-                autoComplete="organization"
-              />
+              <>
+                <label className="sr-only" htmlFor="tenantSlug">
+                  Identificador do escritório
+                </label>
+                <input
+                  id="tenantSlug"
+                  name="tenantSlug"
+                  placeholder="Identificador do escritório (ex.: escritorio-demo)"
+                  value={tenantSlug}
+                  onChange={(e) => setTenantSlug(e.target.value)}
+                  list="tenant-slug-hints"
+                  autoComplete="organization"
+                />
+              </>
             )}
             {hintTenants.length ? (
               <datalist id="tenant-slug-hints">
@@ -124,23 +161,39 @@ export default function Login() {
                 ))}
               </datalist>
             ) : null}
-            <input name="email" type="email" placeholder="E-mail" required />
+            <label className="sr-only" htmlFor="email">
+              E-mail
+            </label>
+            <input id="email" name="email" type="email" placeholder="E-mail" required />
+            <label className="sr-only" htmlFor="password">
+              Senha
+            </label>
             <input
+              id="password"
               name="password"
               type="password"
               placeholder="Senha · mínimo 8 caracteres"
               minLength={8}
               required
             />
-            {error ? <div style={{ fontSize: 11, color: '#b91c1c' }}>{error}</div> : null}
-            <button className="primary">{mode === 'login' ? 'Entrar' : 'Criar workspace'}</button>
+            {error ? (
+              <div role="alert" style={{ fontSize: 12, color: '#b91c1c', lineHeight: 1.4 }}>
+                {error}
+              </div>
+            ) : null}
+            <button className="primary" disabled={busy}>
+              {busy ? 'Entrando…' : mode === 'login' ? 'Entrar' : 'Criar escritório'}
+            </button>
           </form>
           <div className="hint">
             {mode === 'login' ? (
               <>
+                <div style={{ marginBottom: 8, color: '#8b949f' }}>
+                  Esqueceu a senha? Solicite redefinição ao administrador do escritório.
+                </div>
                 Primeiro acesso?{' '}
                 <b onClick={() => setMode('setup')} style={{ cursor: 'pointer', color: '#111827' }}>
-                  Criar workspace inicial
+                  Criar escritório inicial
                 </b>
               </>
             ) : (

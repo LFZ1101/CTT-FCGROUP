@@ -482,9 +482,9 @@ export default function CompararInstrumentosPage() {
     <Shell title="Comparar versões">
       <div className="page">
         <PageHeader
-          eyebrow="Fase 3H"
+          eyebrow="Principais mudanças"
           title="Comparador de cláusulas"
-          description="Diff heurístico entre duas versões de instrumentos coletivos (número, título, categoria e similaridade textual)."
+          description="Compare duas versões e veja o que mudou de forma objetiva — com detalhe disponível quando necessário."
           action={
             <Link className="secondary" href="/instrumentos">
               Voltar aos instrumentos

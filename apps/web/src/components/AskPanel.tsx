@@ -49,7 +49,7 @@ export default function AskPanel({
       });
       setResult(data);
     } catch (err: any) {
-      setError(err?.message || 'Falha ao consultar RAG');
+      setError(err?.message || 'Não foi possível obter uma resposta com evidência');
     } finally {
       setBusy(false);
     }
@@ -59,7 +59,7 @@ export default function AskPanel({
     <section className="panel" style={{ marginBottom: 14 }}>
       <div className="panelhead">
         <div>
-          <span className="eyebrow">RAG 3I</span>
+          <span className="eyebrow">Perguntar com evidência</span>
           <h2>Perguntar com citação</h2>
         </div>
       </div>

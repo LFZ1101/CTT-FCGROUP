@@ -1,8 +1,8 @@
 # Estado atual — CCT Intelligence
 
 **Data:** 2026-09-10  
-**Branch ativa:** `cursor/cct-intelligence-union-crawlers-310a`  
-**Núcleo:** fases 1–7 + crawlers sindicais (adapters)
+**Branch ativa:** `cursor/cct-intelligence-productization-310a`  
+**Núcleo:** fases 1–7 + crawlers + **productization UX** (design system / nav / copy)
 
 ## Promessa
 
@@ -25,6 +25,8 @@ Reduzir o risco de mudança trabalhista passar despercebida — da vigilância �
 ## UI
 
 `/vigilancia`, `/rede/*`, `/empresas/importar`, `/colaboradores`, `/integracoes`, `/prazos`, instrumentos com impacto piso.
+
+Navegação agrupada (Visão / Carteira / Convenções / Operação / Administração), tokens de design system e status traduzidos na UI. Ver `docs/UX_UI_AUDIT.md`, `docs/DESIGN_SYSTEM.md`, `docs/PRODUCTIZATION_REPORT.md`.
 
 ## Limitações honestas
 

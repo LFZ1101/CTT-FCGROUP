@@ -1,9 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Shell from '../components/Shell';
 import PageHeader from '../components/PageHeader';
+import { EmptyState, Skeleton } from '../components/ui/Status';
 import { api } from '../lib/api';
+import { labelOf } from '../lib/labels';
 
 const fallback = {
   metrics: {
@@ -20,31 +22,64 @@ const fallback = {
     coveragePct: 0,
   },
   attention: [] as any[],
-  pipeline: [] as { status: string; count: number }[],
   recent: [] as any[],
   mediador: { lastCheckedAt: null as string | null },
 };
 
+function priorityOf(item: any): 'high' | 'med' | 'low' {
+  const code = String(item?.code || item?.severity || '').toUpperCase();
+  if (code.includes('CRITICAL') || code.includes('FAIL') || code.includes('DEADLINE')) return 'high';
+  if (code.includes('WARN') || code.includes('PENDING') || code.includes('NEW')) return 'med';
+  if (item?.severity === 'CRITICAL') return 'high';
+  if (item?.severity === 'WARNING') return 'med';
+  return 'low';
+}
+
 export default function Home() {
   const [d, setD] = useState<any>(fallback);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    api('/dashboard').then(setD).catch(() => {});
+    setLoading(true);
+    api('/dashboard')
+      .then((res) => {
+        setD(res);
+        setError('');
+      })
+      .catch((e) => setError(e?.message || 'Falha ao carregar visão geral'))
+      .finally(() => setLoading(false));
   }, []);
+
   const m = d.metrics || fallback.metrics;
   const attention = d.attention || [];
+  const attentionCount = attention.length;
+
+  const ranked = useMemo(
+    () =>
+      [...attention].sort((a, b) => {
+        const rank = { high: 0, med: 1, low: 2 } as const;
+        return rank[priorityOf(a)] - rank[priorityOf(b)];
+      }),
+    [attention],
+  );
 
   return (
     <Shell title="Visão geral">
       <div className="page">
         <PageHeader
-          eyebrow="O que exige atenção hoje"
-          title="Reduza o risco de uma mudança passar despercebida"
-          description="Novos instrumentos, prazos críticos, falhas de fonte e vínculos pendentes."
+          eyebrow="Prioridade operacional"
+          title="O que exige atenção hoje?"
+          description="Foque no que muda risco: novos instrumentos, prazos críticos, falhas de fonte e vínculos pendentes."
         />
 
         <section className="panel" style={{ marginBottom: 16 }}>
           <div className="panelhead">
-            <h2>Hoje</h2>
+            <h2>
+              {attentionCount
+                ? `${attentionCount} ${attentionCount === 1 ? 'item exige' : 'itens exigem'} sua atenção`
+                : 'Nada crítico no momento'}
+            </h2>
             <span>
               Mediador{' '}
               {d.mediador?.lastCheckedAt
@@ -52,52 +87,107 @@ export default function Home() {
                 : 'sem consulta recente'}
             </span>
           </div>
-          <div className="attention">
-            {attention.length ? (
-              attention.map((a: any) => (
-                <div className="attn" key={a.code}>
-                  <strong>
-                    <Link href={a.href || '/alertas'}>{a.text}</Link>
-                  </strong>
-                  <p>{a.severity}</p>
-                </div>
-              ))
-            ) : (
-              <div className="attn">
-                <strong>Nada crítico no momento</strong>
-                <p>Continue monitorando fontes e validando vínculos sindicais.</p>
-              </div>
-            )}
-          </div>
+          {loading ? (
+            <div style={{ padding: 16 }}>
+              <Skeleton rows={3} />
+            </div>
+          ) : error ? (
+            <div className="errorstate" style={{ margin: 16 }}>
+              <strong>Não foi possível carregar prioridades</strong>
+              <p>{error}</p>
+            </div>
+          ) : (
+            <div className="attention-board" style={{ padding: 16 }}>
+              {ranked.length ? (
+                ranked.map((a: any) => {
+                  const p = priorityOf(a);
+                  return (
+                    <div className={`attention-card priority-${p}`} key={a.code || a.text}>
+                      <span className={`priority-pill ${p}`}>
+                        {p === 'high' ? 'Crítico' : p === 'med' ? 'Atenção' : 'Info'}
+                      </span>
+                      <div>
+                        <b>
+                          <Link href={a.href || '/alertas'}>{a.text}</Link>
+                        </b>
+                        <span>{a.severity}</span>
+                      </div>
+                      <Link className="secondary" href={a.href || '/alertas'}>
+                        Abrir
+                      </Link>
+                    </div>
+                  );
+                })
+              ) : (
+                <EmptyState
+                  title="Operação sob controle"
+                  description="Continue monitorando fontes e validando vínculos sindicais. Novos itens aparecerão aqui automaticamente."
+                />
+              )}
+            </div>
+          )}
         </section>
 
         <section className="metrics">
           {[
-            ['Cobertura', `${m.coveragePct ?? 0}%`, 'carteira monitorada'],
-            ['Novos instrumentos', m.newInstruments ?? 0, '7 dias'],
-            ['Prazos críticos', m.criticalDeadlines ?? 0, 'próximos 7 dias'],
-            ['Aguardando validação', m.pendingValidations, 'revisão humana'],
-            ['Alertas não lidos', m.unreadAlerts, 'publicação e divergência'],
-            ['Rede colaborativa', m.collaborativeNetworkNew ?? 0, 'novas na semana'],
-            ['Collab. revisão', m.collaborativePendingReview ?? 0, 'aguardando'],
-            ['Pedidos atendidos', m.documentRequestsFulfilled ?? 0, '30 dias'],
-            ['Vigências (60d)', m.instrumentsExpiringSoon ?? 0, 'risco de vencimento'],
-          ].map(([k, v, f]) => (
-            <article className="metric" key={String(k)}>
-              <div className="k">{k}</div>
-              <div className="v">{v}</div>
-              <div className="f">{f}</div>
+            {
+              k: 'Cobertura',
+              v: `${m.coveragePct ?? 0}%`,
+              f: 'carteira monitorada',
+              cls: 'emphasis',
+            },
+            {
+              k: 'Novos instrumentos',
+              v: m.newInstruments ?? 0,
+              f: '7 dias',
+              cls: (m.newInstruments ?? 0) > 0 ? 'alertish' : '',
+            },
+            {
+              k: 'Prazos críticos',
+              v: m.criticalDeadlines ?? 0,
+              f: 'próximos 7 dias',
+              cls: (m.criticalDeadlines ?? 0) > 0 ? 'alertish' : '',
+              tone: (m.criticalDeadlines ?? 0) > 0 ? 'danger' : '',
+            },
+            {
+              k: 'Aguardando validação',
+              v: m.pendingValidations,
+              f: 'revisão humana',
+              cls: m.pendingValidations > 0 ? 'alertish' : '',
+              tone: m.pendingValidations > 0 ? 'warn' : '',
+            },
+            {
+              k: 'Alertas não lidos',
+              v: m.unreadAlerts,
+              f: 'publicação e divergência',
+              cls: m.unreadAlerts > 0 ? 'alertish' : '',
+              tone: m.unreadAlerts > 0 ? 'warn' : '',
+            },
+            { k: 'Rede colaborativa', v: m.collaborativeNetworkNew ?? 0, f: 'novas na semana', cls: '' },
+            { k: 'Em revisão na rede', v: m.collaborativePendingReview ?? 0, f: 'aguardando moderação', cls: '' },
+            { k: 'Pedidos atendidos', v: m.documentRequestsFulfilled ?? 0, f: '30 dias', cls: '' },
+            { k: 'Vigências (60d)', v: m.instrumentsExpiringSoon ?? 0, f: 'risco de vencimento', cls: '' },
+          ].map((x) => (
+            <article className={`metric ${x.cls}`} key={x.k}>
+              <div className="k">{x.k}</div>
+              <div className={`v ${x.tone || ''}`}>{x.v}</div>
+              <div className="f">{x.f}</div>
             </article>
           ))}
         </section>
+
         <div className="grid2">
           <section className="panel">
             <div className="panelhead">
               <h2>Movimentações recentes</h2>
-              <Link href="/alertas">alertas</Link>
+              <Link href="/alertas">ver alertas</Link>
             </div>
             <div className="feed">
-              {d.recent?.length ? (
+              {loading ? (
+                <div style={{ padding: 16 }}>
+                  <Skeleton rows={4} />
+                </div>
+              ) : d.recent?.length ? (
                 d.recent.map((x: any) => (
                   <div className="feedrow" key={x.id}>
                     <span
@@ -106,14 +196,21 @@ export default function Home() {
                     <div>
                       <div className="feedtitle">{x.title}</div>
                       <div className="feedmeta">
-                        {x.company?.tradeName || x.company?.legalName || x.instrument?.title || x.message}
+                        {x.company?.tradeName ||
+                          x.company?.legalName ||
+                          x.instrument?.title ||
+                          x.message ||
+                          labelOf(x.severity)}
                       </div>
                     </div>
                     <div className="time">{new Date(x.createdAt).toLocaleDateString('pt-BR')}</div>
                   </div>
                 ))
               ) : (
-                <div className="empty">Sem alertas recentes.</div>
+                <EmptyState
+                  title="Sem movimentações recentes"
+                  description="Quando houver novos alertas ou validações, o histórico aparecerá aqui."
+                />
               )}
             </div>
           </section>
@@ -137,9 +234,15 @@ export default function Home() {
               </div>
               <div className="attn">
                 <strong>
-                  <Link href="/instrumentos">Instrumentos</Link>
+                  <Link href="/instrumentos">CCT / ACT</Link>
                 </strong>
-                <p>Novas CCT/ACT e empresas potencialmente impactadas.</p>
+                <p>Novos instrumentos e empresas potencialmente impactadas.</p>
+              </div>
+              <div className="attn">
+                <strong>
+                  <Link href="/rede">Rede Colaborativa</Link>
+                </strong>
+                <p>Documentos compartilhados entre escritórios antes da publicação oficial.</p>
               </div>
             </div>
           </aside>

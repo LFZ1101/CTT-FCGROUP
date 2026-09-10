@@ -165,7 +165,7 @@ export default function DocumentoPage() {
     <Shell title="Documento">
       <div className="page">
         <PageHeader
-          eyebrow="Document Intelligence"
+          eyebrow="Revisão documental"
           title={doc?.title || 'Revisão documental'}
           description="Texto por página, metadados com evidência, classificação e cláusulas segmentadas."
         />

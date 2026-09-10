@@ -44,7 +44,7 @@ export default function DocumentosPage() {
     <Shell title="Documentos">
       <div className="page">
         <PageHeader
-          eyebrow="Pipeline documental"
+          eyebrow="Acervo e revisão"
           title="Documentos descobertos"
           description="Lista operacional e busca textual em documentos, cláusulas e instrumentos do tenant."
         />

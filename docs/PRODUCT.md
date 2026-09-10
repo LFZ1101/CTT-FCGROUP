@@ -24,7 +24,7 @@ Fluxo de valor: fontes dispersas → documentos → informação estruturada →
 5. Pipeline idempotente e reprocessável
 6. Preferir monitoramento + alerta + prazo a ferramentas técnicas de diff
 
-## Prioridade de UX (pós feedback 001)
+## Prioridade de UX (pós feedback 001 + productization)
 
 1. Vigilância Sindical / cobertura
 2. Vínculo sindical assistido
@@ -34,6 +34,8 @@ Fluxo de valor: fontes dispersas → documentos → informação estruturada →
 6. Resumo operacional + IA com evidência
 7. Empresas impactadas
 8. Comparação detalhada (secundária)
+
+Productization 2026-09-10: hierarquia visual, nav agrupada, remoção de jargão de fase/enum na UI, estados vazios/loading. Detalhes em `docs/PRODUCTIZATION_REPORT.md`.
 
 ## Base Colaborativa
 
