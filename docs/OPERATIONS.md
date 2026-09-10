@@ -7,12 +7,12 @@ cp .env.example .env
 cp apps/web/.env.local.example apps/web/.env.local
 docker compose up -d
 pnpm install
-pnpm db:generate && pnpm db:push && pnpm db:seed
+pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed
+# alternativa rápida em dev: pnpm db:push
 pnpm dev:api    # :4000
 pnpm dev:web    # :3000
 pnpm dev:worker
 ```
-
 Seed: `owner@demo.cct` / `Demo@123456`
 
 ## Qualidade

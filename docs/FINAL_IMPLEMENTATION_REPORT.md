@@ -79,11 +79,12 @@ Deploy: `pnpm db:migrate:deploy` (também no GitHub Actions).
 - `GET /documents/search?q=`
 - `POST /alerts/scan-expiring`
 - `POST /tasks/sync-review`
-- Health com checks database/redis
+- `POST /documents/:id/review`
+- Health com checks database/redis (`GET /health`)
 
 ## Workers / filas
 
-Inalterados em contrato; monitor passa a enriquecer candidatos via adaptador Mediador quando `SourceType=MEDIADOR_MTE` ou host Mediador.
+API de monitoramento **enfileira** `check-source`; scrape + Mediador só no worker.
 
 ## IA
 
@@ -91,14 +92,15 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG.
 
 ## Testes
 
-- API: 27 testes (incl. novos guards/tenancy/search)
-- Worker: 15 testes (incl. mediador)
-- `pnpm typecheck` e `pnpm build` OK após correção do script
+- API: 40 testes (unit + integration multi-tenant)
+- Worker: 15 testes
+- `pnpm typecheck` / `pnpm build` OK
 
 ## Bugs encontrados e corrigidos
 
 - Script root `typecheck` inválido / quebrado no package database
 - Worker test script omitia `mime.spec.ts` / `intelligence.spec.ts`
+- Scrape duplicado API×worker (API passou a apenas enfileirar)
 
 ## O QUE AINDA NÃO ESTÁ 100% PRONTO
 
@@ -119,7 +121,8 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG.
 - Coletor HTML genérico + Mediador heurístico falham em sites anti-bot
 - Embeddings locais ≠ qualidade de modelos neurais
 - URLs assinadas dependem de clock/credenciais storage
-- Sem rate limit, brute-force de login é risco de produção
+- Rate limit de login é por processo (réplicas precisam Redis compartilhado)
+- Monitoramento manual depende do worker estar ativo
 
 ## Dependências externas
 
