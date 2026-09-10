@@ -26,7 +26,7 @@ export default function Alertas() {
     });
     setMsg(
       `Varredura: ${r.scanned} instrumentos na janela, ${r.created} alerta(s) novo(s)` +
-        (typeof r.notified === 'number' ? `, ${r.notified} e-mail(s) enviado(s)` : '') +
+        (typeof r.notified === 'number' ? `, ${r.notified} notificação(ões)` : '') +
         '.',
     );
     load();
@@ -35,17 +35,33 @@ export default function Alertas() {
   async function notifyEmail(id: string) {
     setBusyId(id);
     try {
-      const r = await api<{ sent?: boolean; skipped?: boolean; reason?: string }>(
-        '/notifications/alerts/email',
-        {
-          method: 'POST',
-          body: JSON.stringify({ alertId: id }),
-        },
-      );
-      if (r.sent) setMsg(`E-mail enviado para o alerta ${id.slice(0, 8)}…`);
-      else setMsg(`E-mail não enviado (${r.reason || (r.skipped ? 'SMTP/destinatários' : 'falha')}).`);
+      const r = await api<{
+        email?: { sent?: boolean; skipped?: boolean; reason?: string };
+        webhook?: { sent?: boolean; skipped?: boolean; reason?: string };
+        sent?: boolean;
+        skipped?: boolean;
+        reason?: string;
+      }>('/notifications/alerts/email', {
+        method: 'POST',
+        body: JSON.stringify({ alertId: id }),
+      });
+      const email = r.email || r;
+      const webhook = r.webhook;
+      const parts = [
+        email?.sent
+          ? 'e-mail enviado'
+          : `e-mail não enviado (${email?.reason || (email?.skipped ? 'SMTP' : 'falha')})`,
+      ];
+      if (webhook) {
+        parts.push(
+          webhook.sent
+            ? 'webhook enviado'
+            : `webhook (${webhook.reason || (webhook.skipped ? 'não configurado' : 'falha')})`,
+        );
+      }
+      setMsg(`Alerta ${id.slice(0, 8)}…: ${parts.join('; ')}.`);
     } catch (e: any) {
-      setMsg(e?.message || 'Falha ao notificar por e-mail');
+      setMsg(e?.message || 'Falha ao notificar');
     } finally {
       setBusyId(null);
     }
@@ -57,7 +73,7 @@ export default function Alertas() {
         <PageHeader
           eyebrow="Risco e mudanças"
           title="Central de alertas"
-          description="Fila para novas publicações, divergências, vigências e impactos detectados. WARNING/CRITICAL disparam e-mail automático no scan (se SMTP estiver configurado)."
+          description="Fila para novas publicações, divergências, vigências e impactos detectados. WARNING/CRITICAL disparam e-mail/webhook no scan (se configurados)."
           action={
             <button className="primary" onClick={() => void scanExpiring()}>
               Verificar vigências
@@ -94,7 +110,7 @@ export default function Alertas() {
                   disabled={busyId === x.id}
                   onClick={() => void notifyEmail(x.id)}
                 >
-                  {busyId === x.id ? 'Enviando…' : 'E-mail'}
+                  {busyId === x.id ? 'Enviando…' : 'Notificar'}
                 </button>
               </td>
             </tr>

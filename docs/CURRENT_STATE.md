@@ -3,23 +3,21 @@
 **Data:** 2026-09-10  
 **Branch:** `cursor/cct-intelligence-autonomous-roadmap-310a`
 
-## Prioridades da execução autônoma
+## Prioridades
 
 | Etapa | Status |
 |---|---|
-| Isolamento multi-tenant + migrations + CI + revisão documental | DONE |
-| Mediador/MTE (HTTP + parsing + bloqueio + retry) | DONE (live DNS/CAPTCHA ainda limitam) |
-| pgvector + embeddings + RAG evidência | DONE (opcional; fallback JSON) |
-| Impacto em folha | DONE |
-| Notificações e-mail | DONE |
-| Login por tenantSlug + rate limit Redis | DONE |
-| OCR PDFs escaneados | DONE (opt-in) |
-| Observabilidade (requestId, métricas, Sentry) | DONE (OTel traces depois) |
+| Pipeline 3A–3J + RBAC/CI/isolamento | DONE |
+| Mediador HTTP + retry + gate/fixture | DONE |
+| pgvector / RAG / folha / e-mail | DONE |
+| Auth tenantSlug + Redis RL | DONE |
+| OCR opt-in | DONE |
+| Observabilidade (requestId/metrics/Sentry) | DONE |
+| Webhooks de alerta | DONE |
 
 ## Limitações
 
-- Portal Mediador pode bloquear (CAPTCHA/JS); check grava `BLOCKED`.
-- pgvector exige imagem `pgvector/pgvector:pg16`.
-- E-mail / Sentry / OCR só com env configurada.
-- Métricas `/health/metrics` são por processo (não cluster-wide).
-- Impacto em folha é qualitativo.
+- Mediador: CAPTCHA/JS ainda bloqueiam; gate evita martelar o portal.
+- Webhook ≠ Web Push VAPID (próximo).
+- Métricas/circuit por processo.
+- OCR/Sentry/SMTP/webhook só com env.

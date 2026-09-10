@@ -176,8 +176,14 @@
 - Worker: logs estruturados por job (`jobId`, fila, tenant)
 - Mediador: retry/backoff em 429/502/503/rede; ADR 0005
 
+## 3R — Webhooks de alerta + gate Mediador (entregue)
+
+- Fan-out e-mail + webhook (`NOTIFY_WEBHOOK_URL`, HMAC opcional)
+- Circuit breaker / intervalo mínimo no worker Mediador
+- `MEDIADOR_MODE=fixture` para staging offline; ADR 0006
+
 ## Próximo
 
-- Mediador staging real / anti-bot avançado
+- Web Push (VAPID) / preferências por usuário
 - OpenTelemetry traces
-- Push notifications
+- Mediador anti-bot avançado (browser automation controlada)

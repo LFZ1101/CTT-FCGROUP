@@ -24,7 +24,10 @@ describe('AlertsService.scanExpiringInstruments', () => {
     const notifications = {
       notifyAlert: async (_tenantId: string, alertId: string) => {
         notifyCalls.push(alertId);
-        return { sent: true, messageId: 'm1' };
+        return {
+          email: { sent: true, messageId: 'm1' },
+          webhook: { sent: false, skipped: true, reason: 'webhook_unconfigured' },
+        };
       },
     };
 

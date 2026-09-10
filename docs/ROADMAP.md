@@ -17,7 +17,7 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 10 | Comparação instrumentos | DONE_NEEDS_TESTS |
 | 11 | Compatibilidade empresa×instrumento | DONE_NEEDS_TESTS |
 | 12 | Validação humana | DONE_NEEDS_TESTS |
-| 13 | Alertas inteligentes | DONE_NEEDS_TESTS (vigência + e-mail WARNING/CRITICAL) |
+| 13 | Alertas inteligentes | DONE_NEEDS_TESTS (vigência + e-mail/webhook) |
 | 14 | Tarefas automáticas | DONE_NEEDS_TESTS (sync review) |
 | 15 | RAG / IA documental | DONE_NEEDS_TESTS (híbrido + pgvector opcional) |
 | 16 | Busca documental | DONE_NEEDS_TESTS |
@@ -31,6 +31,6 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 
 ## Próximos (não bloqueantes)
 
-- Adaptador Mediador em produção real (anti-bot/JS)
+- Web Push (VAPID) e preferências por usuário
 - OpenTelemetry traces
-- Push notifications (além de e-mail)
+- Mediador anti-bot avançado (automação controlada)

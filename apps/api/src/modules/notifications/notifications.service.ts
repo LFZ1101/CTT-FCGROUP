@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { MailService } from './mail.service';
+import { deliverWebhook } from './webhook';
 
 @Injectable()
 export class NotificationsService {
@@ -11,13 +12,21 @@ export class NotificationsService {
 
   /**
    * Notifica owners/admins do tenant sobre alerta crítico/warning recente.
-   * Destinatários: NOTIFY_EMAILS (csv) ou e-mails OWNER/ADMIN ativos do tenant.
+   * Canais: e-mail (SMTP) + webhook (NOTIFY_WEBHOOK_URL).
    */
   async notifyAlert(tenantId: string, alertId: string) {
     const alert = await this.prisma.alert.findFirst({ where: { id: alertId, tenantId } });
-    if (!alert) return { sent: false, skipped: true, reason: 'alert_not_found' };
+    if (!alert) {
+      return {
+        email: { sent: false, skipped: true, reason: 'alert_not_found' },
+        webhook: { sent: false, skipped: true, reason: 'alert_not_found' },
+      };
+    }
     if (alert.severity === 'INFO' && process.env.NOTIFY_INFO !== 'true') {
-      return { sent: false, skipped: true, reason: 'info_suppressed' };
+      return {
+        email: { sent: false, skipped: true, reason: 'info_suppressed' },
+        webhook: { sent: false, skipped: true, reason: 'info_suppressed' },
+      };
     }
 
     const configured = (process.env.NOTIFY_EMAILS || '')
@@ -33,25 +42,43 @@ export class NotificationsService {
       });
       recipients = users.map((u) => u.email);
     }
-    if (!recipients.length) return { sent: false, skipped: true, reason: 'no_recipients' };
 
-    const result = await this.mail.send({
-      to: recipients,
-      subject: `[CCT Intelligence] ${alert.severity}: ${alert.title}`,
-      text: `${alert.message}\n\nTipo: ${alert.type}\nSeveridade: ${alert.severity}\n`,
-      html: `<p><strong>${alert.title}</strong></p><p>${alert.message}</p><p>Severidade: ${alert.severity}</p>`,
+    const email =
+      recipients.length === 0
+        ? { sent: false, skipped: true as const, reason: 'no_recipients' }
+        : await this.mail.send({
+            to: recipients,
+            subject: `[CCT Intelligence] ${alert.severity}: ${alert.title}`,
+            text: `${alert.message}\n\nTipo: ${alert.type}\nSeveridade: ${alert.severity}\n`,
+            html: `<p><strong>${alert.title}</strong></p><p>${alert.message}</p><p>Severidade: ${alert.severity}</p>`,
+          });
+
+    const webhook = await deliverWebhook({
+      type: 'alert',
+      alertId: alert.id,
+      tenantId,
+      severity: alert.severity,
+      alertType: alert.type,
+      title: alert.title,
+      message: alert.message,
+      instrumentId: alert.instrumentId,
+      companyId: alert.companyId,
+      timestamp: new Date().toISOString(),
     });
 
     await this.prisma.auditLog.create({
       data: {
         tenantId,
-        action: 'EMAIL_NOTIFICATION',
+        action: 'ALERT_NOTIFICATION',
         entity: 'Alert',
         entityId: alertId,
-        metadata: { ...result, recipientsCount: recipients.length },
+        metadata: {
+          email: { ...email, recipientsCount: recipients.length },
+          webhook,
+        },
       },
     });
 
-    return result;
+    return { email, webhook };
   }
 }

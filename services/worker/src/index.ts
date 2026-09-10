@@ -24,6 +24,7 @@ import {
   fetchMediadorPage,
   detectMediadorBlock,
 } from './adapters/mediador.js';
+import { beforeMediadorFetch, markMediadorFetch } from './adapters/mediador-gate.js';
 import { extensionForMime, isAllowedMime } from './mime.js';
 import { extractPages } from './extract.js';
 import { assessExtraction, maybeApplyOcr } from './ocr.js';
@@ -99,6 +100,32 @@ async function monitorSource(sourceId: string) {
 
   try {
     const isMediador = source.type === 'MEDIADOR_MTE' || isMediadorUrl(source.url);
+
+    if (isMediador) {
+      const gate = await beforeMediadorFetch(source.url);
+      if (!gate.allow) {
+        await prisma.source.update({
+          where: { id: sourceId },
+          data: { lastCheckedAt: new Date() },
+        });
+        await prisma.sourceCheck.update({
+          where: { id: check.id },
+          data: {
+            status: 'BLOCKED',
+            httpStatus: null,
+            documentsFound: 0,
+            message: `circuit_open até ${new Date(gate.openUntil).toISOString()}`,
+            finishedAt: new Date(),
+          },
+        });
+        workerLog('warn', 'mediador_circuit_open', {
+          sourceId,
+          openUntil: gate.openUntil,
+        });
+        return { sourceId, blocked: true, reason: 'circuit_open' };
+      }
+    }
+
     const response = isMediador
       ? await fetchMediadorPage(source.url)
       : await (async () => {
@@ -117,6 +144,10 @@ async function monitorSource(sourceId: string) {
             reason: block.reason,
           };
         })();
+
+    if (isMediador) {
+      markMediadorFetch(source.url, Boolean(response.blocked || !response.ok));
+    }
 
     if (response.blocked || !response.ok) {
       await prisma.source.update({

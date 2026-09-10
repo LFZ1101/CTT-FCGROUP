@@ -75,4 +75,16 @@ describe('mediador adapter (real integration helpers)', () => {
     assert.equal(result.ok, false);
     assert.ok(result.status === 0 || result.blocked);
   });
+
+  it('modo fixture carrega HTML local', async () => {
+    const prev = process.env.MEDIADOR_MODE;
+    process.env.MEDIADOR_MODE = 'fixture';
+    const { fetchMediadorPage } = await import('./mediador.js');
+    const result = await fetchMediadorPage('https://www.mediador.mte.gov.br/consulta');
+    assert.equal(result.ok, true);
+    assert.equal(result.reason, 'fixture');
+    assert.match(result.html, /mediador|CCT|instrumento|pdf/i);
+    if (prev === undefined) delete process.env.MEDIADOR_MODE;
+    else process.env.MEDIADOR_MODE = prev;
+  });
 });

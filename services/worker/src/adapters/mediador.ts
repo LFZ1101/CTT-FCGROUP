@@ -1,9 +1,13 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 /**
  * Cliente/adaptador Mediador (MTE).
  *
  * Integração real = HTTP + parsing de HTML/consulta pública.
  * Limitações conhecidas (anti-bot/JS/CAPTCHA) são tratadas com status explícito,
  * sem inventar documentos.
+ * MEDIADOR_MODE=fixture usa HTML local (staging offline).
  */
 
 export type CandidateLink = {
@@ -66,10 +70,44 @@ export function detectMediadorBlock(html: string, status: number): {
   return { blocked: false };
 }
 
+async function loadMediadorFixture(url: string): Promise<MediadorFetchResult | null> {
+  if (process.env.MEDIADOR_MODE !== 'fixture') return null;
+  const fixtureRel =
+    process.env.MEDIADOR_FIXTURE_PATH || 'fixtures/mediador/consulta-sample.html';
+  const candidates = [
+    resolve(process.cwd(), fixtureRel),
+    resolve(process.cwd(), '../../', fixtureRel),
+    resolve(process.cwd(), '../..', fixtureRel),
+  ];
+  const path = candidates.find((p) => existsSync(p));
+  if (!path) {
+    return {
+      ok: false,
+      status: 0,
+      finalUrl: url,
+      html: '',
+      blocked: true,
+      reason: 'fixture_missing',
+    };
+  }
+  const html = readFileSync(path, 'utf8');
+  return {
+    ok: true,
+    status: 200,
+    finalUrl: url,
+    html,
+    blocked: false,
+    reason: 'fixture',
+  };
+}
+
 export async function fetchMediadorPage(
   url: string,
   init?: { timeoutMs?: number; userAgent?: string; attempts?: number },
 ): Promise<MediadorFetchResult> {
+  const fixture = await loadMediadorFixture(url);
+  if (fixture) return fixture;
+
   const attempts = Math.max(1, init?.attempts ?? Number(process.env.MEDIADOR_MAX_ATTEMPTS || 3));
   const baseDelay = Math.max(100, Number(process.env.MEDIADOR_RETRY_MS || 800));
   let last: MediadorFetchResult | null = null;

@@ -69,6 +69,7 @@
 20. Login multi-tenant por `tenantSlug` + rate limit Redis (fallback memória); UI e e2e smoke
 21. OCR opcional (detecção + pdftoppm/tesseract); ADR 0004; badge na UI documental
 22. Observabilidade leve (requestId, metrics, Sentry opt) + retry Mediador; ADR 0005
+23. Webhooks de alerta + gate/fixture Mediador; ADR 0006
 
 ## Arquitetura final
 
@@ -123,7 +124,7 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvect
 - Build/push de imagens Docker em registry
 - UX polish / acessibilidade formal
 - Observabilidade OTel traces (há Sentry/metrics/requestId)
-- Push notifications (só e-mail SMTP)
+- Web Push VAPID (há webhook HTTP)
 - OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
 
 ## Riscos
@@ -155,6 +156,6 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Próximos passos
 
-1. Validar Mediador em staging com fonte real / anti-bot
+1. Web Push (VAPID) / preferências
 2. OpenTelemetry traces
-3. Push notifications
+3. Mediador anti-bot avançado

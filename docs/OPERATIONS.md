@@ -59,6 +59,12 @@ Worker consome `source-monitoring`, `document-download`, `document-parse`. Inter
 - Sentry: `SENTRY_DSN` (opcional)
 - Worker: logs JSON com `jobId`
 
+## Webhooks / Mediador
+
+- `NOTIFY_WEBHOOK_URL` (+ `NOTIFY_WEBHOOK_SECRET` → header `X-CCT-Signature`)
+- Gate: `MEDIADOR_MIN_INTERVAL_MS`, `MEDIADOR_BLOCK_THRESHOLD`, `MEDIADOR_COOLDOWN_MS`
+- Staging offline: `MEDIADOR_MODE=fixture`
+
 ## Postgres / pgvector
 
 Compose e CI usam `pgvector/pgvector:pg16`. Se o volume local foi criado com `postgres:16-alpine`, a migration `20260910140000_pgvector_embeddings` falha até recriar o volume (`docker compose down -v && docker compose up -d`). Sem a extensão, o RAG continua com embeddings JSON.
