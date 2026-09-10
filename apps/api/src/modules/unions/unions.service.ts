@@ -18,13 +18,53 @@ export class UnionsService {
     const union = await this.prisma.union.findFirst({
       where: { id, tenantId },
       include: {
-        companies: { include: { company: true } },
-        sources: true,
+        companies: {
+          include: { company: true },
+          orderBy: { createdAt: 'desc' },
+        },
+        sources: { orderBy: { name: 'asc' } },
+        parties: {
+          include: {
+            instrument: {
+              select: { id: true, title: true, type: true, status: true, endDate: true, createdAt: true },
+            },
+          },
+          take: 30,
+        },
         _count: { select: { companies: true, parties: true, sources: true } },
       },
     });
     if (!union) throw new NotFoundException('Sindicato não encontrado');
-    return union;
+
+    const alerts = await this.prisma.alert.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { instrumentId: { in: union.parties.map((p) => p.instrument.id) } },
+          { companyId: { in: union.companies.map((c) => c.companyId) } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 15,
+    });
+
+    const deadlines = await this.prisma.detectedDeadline.findMany({
+      where: {
+        tenantId,
+        instrumentId: { in: union.parties.map((p) => p.instrument.id) },
+        status: { in: ['OPEN', 'ACKNOWLEDGED'] },
+      },
+      orderBy: { dueDate: 'asc' },
+      take: 20,
+    });
+
+    return {
+      ...union,
+      linkedCompanies: union.companies.filter((c) => c.status === 'CONFIRMED' || c.confirmed),
+      suggestedCompanies: union.companies.filter((c) => c.status === 'SUGGESTED' || c.status === 'NEEDS_REVIEW'),
+      alerts,
+      deadlines,
+    };
   }
 
   create(tenantId: string, dto: CreateUnionDto) {

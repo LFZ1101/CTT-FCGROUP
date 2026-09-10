@@ -71,6 +71,8 @@ export class CompaniesService {
     if (!union) throw new NotFoundException('Sindicato não encontrado neste tenant');
 
     const kind = (dto.kind || 'LABOR').trim().toUpperCase() || 'LABOR';
+    const confirmed = dto.confirmed ?? true;
+    const status = confirmed ? 'CONFIRMED' : 'SUGGESTED';
 
     try {
       return await this.prisma.companyUnion.upsert({
@@ -85,10 +87,16 @@ export class CompaniesService {
           companyId,
           unionId: dto.unionId,
           kind,
-          confirmed: dto.confirmed ?? true,
+          confirmed,
+          status,
+          validationMethod: 'MANUAL',
+          validatedAt: confirmed ? new Date() : null,
         },
         update: {
-          confirmed: dto.confirmed ?? true,
+          confirmed,
+          status,
+          validationMethod: 'MANUAL',
+          validatedAt: confirmed ? new Date() : null,
         },
         include: { union: true },
       });

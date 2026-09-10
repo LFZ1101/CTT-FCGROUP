@@ -1,37 +1,45 @@
-# Roadmap — CCT Intelligence
+# Roadmap — CCT Intelligence (reordenado pelo feedback 001)
 
 Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLOCKED**
 
-| Fase | Tema | Status |
+## P0 — Prioridade máxima (risco de passar despercebido)
+
+| # | Tema | Status |
 |---|---|---|
-| 0 | Auditoria base | DONE |
-| 1 | Hardening arquitetura | DONE_NEEDS_TESTS |
-| 2 | Storage documentos | DONE_NEEDS_TESTS |
-| 3 | Pipeline download | DONE_NEEDS_TESTS |
-| 4 | Extração textual | DONE_NEEDS_TESTS (OCR opcional 3P) |
-| 5 | Page mapping | DONE_NEEDS_TESTS |
-| 6 | Classificação | DONE_NEEDS_TESTS |
-| 7 | Metadados estruturados | DONE_NEEDS_TESTS |
-| 8 | Segmentação cláusulas | DONE_NEEDS_TESTS |
-| 9 | UI revisão documental | DONE_NEEDS_TESTS (checklist + review) |
-| 10 | Comparação instrumentos | DONE_NEEDS_TESTS |
-| 11 | Compatibilidade empresa×instrumento | DONE_NEEDS_TESTS |
-| 12 | Validação humana | DONE_NEEDS_TESTS |
-| 13 | Alertas inteligentes | DONE_NEEDS_TESTS (vigência + e-mail/webhook) |
-| 14 | Tarefas automáticas | DONE_NEEDS_TESTS (sync review) |
-| 15 | RAG / IA documental | DONE_NEEDS_TESTS (híbrido + pgvector opcional) |
-| 16 | Busca documental | DONE_NEEDS_TESTS |
-| 17 | Dashboard enriquecido | DONE_NEEDS_TESTS |
-| 18 | UX/UI polish | PARTIAL (comparador folha + a11y leve em /alertas) |
-| 19 | Observabilidade | DONE_NEEDS_TESTS (health + metrics + requestId + Sentry + OTel lite) |
-| 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + Redis RL + tenantSlug + FK) |
-| 21 | Testes completos | PARTIAL → integration multi-tenant feito |
-| 22 | Documentação | DONE_NEEDS_TESTS |
-| 23 | Preparação deploy | DONE_NEEDS_TESTS (Dockerfiles + CI + migrate) |
+| 1 | Empresas (CRUD) | PARTIAL (sem import) |
+| 2 | Sindicatos (base + detalhe) | DONE_NEEDS_TESTS |
+| 3 | Vínculo sindical assistido | DONE_NEEDS_TESTS |
+| 4 | Mediador real | DONE_NEEDS_TESTS (CAPTCHA BLOCKED) |
+| 5 | Monitoramento sites sindicais | DONE_NEEDS_TESTS |
+| 6 | Vigilância Sindical / cobertura | DONE_NEEDS_TESTS |
+| 7 | Detecção novos instrumentos | DONE_NEEDS_TESTS |
+| 8 | Resumo estruturado operacional | DONE_NEEDS_TESTS |
+| 9 | Extração de prazos | DONE_NEEDS_TESTS |
+| 10 | Alertas de publicação | DONE_NEEDS_TESTS |
+| 11 | Alertas de prazo | DONE_NEEDS_TESTS |
+| 12 | Relação sindicato → empresas | DONE_NEEDS_TESTS |
+| 13 | Empresas potencialmente impactadas | DONE_NEEDS_TESTS |
 
-## Próximos (não bloqueantes / polish)
+## P1 — Diferenciais
 
-- OTel SDK completo / auto-instrumentation
-- Build/push de imagens em registry
-- Auditoria a11y formal (axe) em todas as rotas
-- Imagem worker Debian com Playwright pré-instalado (quando política permitir)
+| # | Tema | Status |
+|---|---|---|
+| 14 | IA documental com evidência | DONE_NEEDS_TESTS |
+| 15 | Divergência Mediador × sindicato | DONE_NEEDS_TESTS (heurística) |
+| 16 | Histórico / auditoria | DONE_NEEDS_TESTS |
+| 17 | Comparação interna → principais mudanças | DONE_NEEDS_TESTS |
+| 18 | Import CSV vínculos | NOT_STARTED |
+| 19 | Busca documental | DONE_NEEDS_TESTS (secundária) |
+
+## P2 — Expansão
+
+| # | Tema | Status |
+|---|---|---|
+| 20 | Funcionários / cargos / salários | NOT_STARTED |
+| 21 | Impacto em folha oficial | PARTIAL (heurístico existe) |
+| 22 | Tarefas automáticas | DONE_NEEDS_TESTS |
+| 23 | Integrações folha / ONVIO / Domínio | NOT_STARTED |
+
+## Roadmap legado (pipeline 0–23)
+
+Preservado: storage, parse, classificação, cláusulas, validação, RAG, observabilidade, auth multi-tenant, OCR opt, push/prefs, OTel lite, Mediador stealth/browser. Ver `docs/PHASE_3.md` e commits anteriores.

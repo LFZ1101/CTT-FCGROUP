@@ -15,16 +15,20 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 
 | Área | Endpoints |
 |---|---|
-| Dashboard | `GET /dashboard` |
+| Dashboard | `GET /dashboard` (attention + coverage + mediador) |
 | Empresas | `GET/POST /companies`, `PATCH/DELETE /companies/:id`, vínculos `/companies/:id/unions` |
-| Sindicatos | `GET/POST /unions`, `GET/PATCH/DELETE /unions/:id` |
+| Vínculo assistido | `GET /companies/:id/union-suggestions`, `POST .../persist`, `POST /company-unions/:linkId/decide` |
+| Sindicatos | `GET/POST /unions`, `GET/PATCH/DELETE /unions/:id` (detalhe com empresas/fontes/prazos) |
+| Vigilância | `GET /surveillance`, `POST /surveillance/scan-divergences` |
+| Prazos | `GET /deadlines`, `POST /deadlines/scan-alerts`, `POST /instruments/:id/extract-deadlines` |
+| Impacto | `GET /instruments/:id/impacted-companies`, `GET /instruments/:id/operational-summary` |
 | Fontes | `GET/POST /sources`, `GET/PATCH /sources/:id` (`enabled`) |
 | Instrumentos | list/detail, validate/reject, applications suggest/confirm |
 | Documentos | `GET /documents`, `GET /documents/search?q=`, detail/pages/clauses/signed-url, enqueue download/parse |
 | Monitoramento | `GET /monitoring/history\|discoveries`, `POST /monitoring/check` |
-| Alertas | `GET/POST /alerts`, `POST /alerts/scan-expiring`, `PATCH /alerts/:id/read` |
+| Alertas | `GET/POST /alerts`, `POST /alerts/scan-expiring`, `PATCH /alerts/:id/read` — tipos: `NEW_INSTRUMENT`/`SOURCE_DIVERGENCE`/`CRITICAL_DEADLINE`/… |
 | Tarefas | `GET/POST /tasks`, `POST /tasks/sync-review`, `PATCH /tasks/:id/status` |
-| Comparações | `POST/GET /comparisons`, `GET /comparisons/:id` |
+| Comparações | `POST/GET /comparisons`, `GET /comparisons/:id` (UX: principais mudanças) |
 | RAG | `POST /rag/ask`, `POST /rag/reindex` |
 | Auditoria | `GET /audit` |
 | `POST /monitoring/check` | Enfileira worker (não scrape sync) |

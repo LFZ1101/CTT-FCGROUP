@@ -76,6 +76,44 @@
 27. Mediador stealth/browser opcional + gate Redis + e2e isolation; ADR 0010
 28. A11y leve em `/alertas` (live region, labels, reduced-motion) + notas Playwright no Dockerfile worker
 
+## ALTERAÇÕES GERADAS PELO FEEDBACK DE USUÁRIO
+
+**Feedback:** `docs/USER_FEEDBACK_001.md`
+
+### O que mudou
+- Prioridade de produto: descobrir/monitorar/alertar/prazos/impacto acima de diff técnico e busca sofisticada.
+- Dashboard reorientado para “O que exige atenção hoje”.
+- Comparação permanece no backend; UX enfatiza “principais mudanças” / resumo operacional.
+
+### O que foi preservado
+- Pipeline 3A–3V (storage→parse→cláusulas→promote→RAG→auth→OCR→observabilidade→Mediador).
+- Modelos e APIs de Company/Union/Source/Instrument/Alerts/Tasks/Comparisons/RAG.
+
+### O que foi ajustado
+- `CompanyUnion` estendido com `status`, `confidence`, validação e auditoria.
+- `CollectiveInstrument.operationalSummary`.
+- Home, nav, detalhe de sindicato/empresa/instrumento.
+
+### O que foi implementado (P0)
+- Matching sindical assistido com score explicável
+- Vigilância Sindical + cobertura da carteira
+- Scan de divergência Mediador × sindicato (`SOURCE_DIVERGENCE`)
+- `DetectedDeadline` + alertas `CRITICAL_DEADLINE`
+- Resumo operacional estruturado
+- Empresas potencialmente impactadas
+- Migration `20260910180000_feedback_p0_union_deadlines`
+- Testes unitários de match/cobertura/prazos/resumo
+
+### O que foi rebaixado
+- Diff técnico como feature principal de UX
+- Busca por palavra-chave como prioridade
+
+### O que continua pendente
+- Import CSV/XLSX de vínculos
+- Catálogo nacional de sindicatos
+- Funcionários/cargos/salários e integrações de folha (P2)
+- Divergência mais robusta (registro Mediador oficial)
+
 ## Arquitetura final
 
 Ver `docs/ARCHITECTURE.md`. Filas: `source-monitoring`, `document-download`, `document-parse`. Storage S3-compatible. RAG com evidência + boost pgvector opcional.

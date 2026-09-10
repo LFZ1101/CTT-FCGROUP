@@ -21,6 +21,9 @@ import { RagModule } from './modules/rag/rag.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { MatchingModule } from './modules/matching/matching.module';
+import { SurveillanceModule } from './modules/surveillance/surveillance.module';
+import { DeadlinesModule } from './modules/deadlines/deadlines.module';
 
 @Module({
   imports: [
@@ -41,6 +44,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AuditModule,
     PayrollModule,
     NotificationsModule,
+    MatchingModule,
+    SurveillanceModule,
+    DeadlinesModule,
   ],
   controllers: [HealthController],
   providers: [
