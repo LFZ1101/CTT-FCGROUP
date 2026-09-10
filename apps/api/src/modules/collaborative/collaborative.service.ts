@@ -48,6 +48,26 @@ export function requestGroupKey(unionId: string, type?: string | null, period?: 
   return [unionId, (type || 'CCT').toUpperCase(), (period || 'ANY').trim().toUpperCase()].join('|');
 }
 
+export function normalizeTitle(title?: string | null) {
+  return (title || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Similaridade Jaccard de tokens; usada no match oficial por metadados (evitar falso positivo). */
+export function titleSimilarity(a?: string | null, b?: string | null) {
+  const ta = new Set(normalizeTitle(a).split(/\s+/).filter((t) => t.length > 2));
+  const tb = new Set(normalizeTitle(b).split(/\s+/).filter((t) => t.length > 2));
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  const union = ta.size + tb.size - inter;
+  return union ? inter / union : 0;
+}
+
 export function originTrustLabel(input: {
   sourceType?: string | null;
   collaborative?: boolean;
@@ -119,7 +139,7 @@ export class CollaborativeService implements OnModuleDestroy {
 
   async overview(tenantId: string) {
     const matchKeys = await this.tenantUnionMatchKeys(tenantId);
-    const [recent, openRequests, pendingModeration, confirmed] = await Promise.all([
+    const [recent, openRequests, pendingModeration, confirmed, reputation] = await Promise.all([
       this.prisma.collaborativePublication.findMany({
         where: {
           revokedAt: null,
@@ -158,6 +178,7 @@ export class CollaborativeService implements OnModuleDestroy {
       this.prisma.collaborativeContribution.count({
         where: { status: 'MATCHED_OFFICIAL_SOURCE' },
       }),
+      this.reputation(tenantId),
     ]);
 
     return {
@@ -168,6 +189,7 @@ export class CollaborativeService implements OnModuleDestroy {
         .slice(0, 15),
       pendingModeration,
       officiallyConfirmed: confirmed,
+      reputation,
     };
   }
 
@@ -627,7 +649,7 @@ export class CollaborativeService implements OnModuleDestroy {
         contribution: {
           include: {
             document: true,
-            union: { select: { id: true, name: true, acronym: true } },
+            union: { select: { id: true, name: true, acronym: true, cnpj: true, states: true } },
           },
         },
       },
@@ -637,19 +659,75 @@ export class CollaborativeService implements OnModuleDestroy {
     const doc = pub.contribution.document;
     if (!doc.storageKey) throw new BadRequestException('Arquivo ainda não disponível');
     const url = await this.storage.getSignedUrl(doc.storageKey);
+
+    const related = await this.relatedCompaniesForViewer(tenantId, pub.unionMatchKey);
+    const officialConfirmed = Boolean(pub.contribution.confirmedByOfficialSourceAt);
+
     return {
       publicationId: pub.id,
       title: pub.title || doc.title,
       origin: 'COLLABORATIVE_NETWORK',
       originLabel: 'Base colaborativa',
-      officialConfirmed: Boolean(pub.contribution.confirmedByOfficialSourceAt),
+      instrumentSource: 'COLABORATIVA',
+      officialStatus: officialConfirmed ? 'CONFIRMADO' : 'NÃO CONFIRMADO',
+      officialConfirmed,
+      humanReviewRequired: !officialConfirmed,
       status: pub.contribution.status,
-      union: pub.contribution.union,
+      union: {
+        id: pub.contribution.union.id,
+        name: pub.contribution.union.name,
+        acronym: pub.contribution.union.acronym,
+      },
       documentClass: pub.documentClass || doc.documentClass,
+      relatedCompaniesCount: related.count,
+      relatedCompaniesNote: related.count
+        ? `${related.count} empresa(s) potencialmente relacionada(s). Fonte: COLABORATIVA. Status oficial: ${
+            officialConfirmed ? 'CONFIRMADO' : 'NÃO CONFIRMADO'
+          }. REVISÃO HUMANA NECESSÁRIA.`
+        : 'Nenhuma empresa vinculada a este sindicato neste escritório.',
       url,
       expiresInSeconds: 900,
-      // nunca expor tenant colaborador ao consumidor
       contributorHidden: true,
+      trust: originTrustLabel({
+        collaborative: true,
+        officialConfirmed,
+      }),
+    };
+  }
+
+  async reputation(tenantId: string) {
+    const [total, approved, confirmed, rejected, revoked, published] = await Promise.all([
+      this.prisma.collaborativeContribution.count({ where: { tenantId } }),
+      this.prisma.collaborativeContribution.count({
+        where: {
+          tenantId,
+          moderationStatus: 'APPROVED',
+          status: { in: ['APPROVED', 'PUBLISHED_TO_NETWORK', 'MATCHED_OFFICIAL_SOURCE'] },
+        },
+      }),
+      this.prisma.collaborativeContribution.count({
+        where: { tenantId, status: 'MATCHED_OFFICIAL_SOURCE' },
+      }),
+      this.prisma.collaborativeContribution.count({
+        where: { tenantId, moderationStatus: 'REJECTED' },
+      }),
+      this.prisma.collaborativeContribution.count({
+        where: { tenantId, status: 'REVOKED' },
+      }),
+      this.prisma.collaborativePublication.count({
+        where: { contributorTenantId: tenantId, revokedAt: null },
+      }),
+    ]);
+    const confirmationRate = approved > 0 ? Number((confirmed / approved).toFixed(3)) : 0;
+    return {
+      // métricas internas de qualidade — sem ranking público
+      totalContributions: total,
+      approvedContributions: approved,
+      officiallyConfirmedContributions: confirmed,
+      rejectedContributions: rejected,
+      revokedContributions: revoked,
+      publishedToNetwork: published,
+      confirmationRate,
     };
   }
 
@@ -718,65 +796,139 @@ export class CollaborativeService implements OnModuleDestroy {
   }
 
   /**
-   * Tenta confirmar contribuições publicadas quando surge documento oficial (Mediador/sindicato)
-   * com mesmo contentHash no mesmo tenant ou em qualquer tenant via publicação.
+   * Confirma contribuições publicadas quando surge documento oficial
+   * (hash preferencial; metadados sindicato+título como fallback conservador).
    */
   async matchOfficialByHash(tenantId: string, documentId: string) {
     const official = await this.prisma.discoveredDocument.findFirst({
       where: { id: documentId, tenantId },
-      include: { source: true },
+      include: {
+        source: { include: { union: true } },
+        instrument: { select: { registration: true, title: true } },
+      },
     });
-    if (!official?.contentHash) return { matched: 0 };
+    if (!official) return { matched: 0, method: null as string | null };
     const isOfficial =
       official.source.type === 'MEDIADOR_MTE' ||
       official.source.type === 'LABOR_UNION' ||
       official.source.type === 'EMPLOYER_UNION' ||
       official.source.type === 'OFFICIAL_BULLETIN';
-    if (!isOfficial) return { matched: 0 };
-
-    const pubs = await this.prisma.collaborativePublication.findMany({
-      where: { contentHash: official.contentHash, revokedAt: null },
-      include: { contribution: true },
-    });
+    if (!isOfficial) return { matched: 0, method: null };
 
     let matched = 0;
-    for (const pub of pubs) {
-      if (pub.contribution.status === 'MATCHED_OFFICIAL_SOURCE') continue;
-      await this.prisma.collaborativeContribution.update({
-        where: { id: pub.contributionId },
-        data: {
-          status: CollaborativeContributionStatus.MATCHED_OFFICIAL_SOURCE,
-          confirmedByOfficialSourceAt: new Date(),
-          officialSourceId: official.sourceId,
-          officialMatchMethod: 'CONTENT_HASH',
-          officialMatchConfidence: 1,
-        },
+    let method: string | null = null;
+
+    if (official.contentHash) {
+      const pubs = await this.prisma.collaborativePublication.findMany({
+        where: { contentHash: official.contentHash, revokedAt: null },
+        include: { contribution: true },
       });
-      await this.prisma.auditLog.create({
-        data: {
-          tenantId: pub.contributorTenantId,
-          action: 'OFFICIAL_SOURCE_MATCHED',
-          entity: 'CollaborativeContribution',
-          entityId: pub.contributionId,
-          metadata: {
-            officialDocumentId: official.id,
-            officialSourceType: official.source.type,
-            method: 'CONTENT_HASH',
-          },
-        },
-      });
-      await this.prisma.alert.create({
-        data: {
-          tenantId: pub.contributorTenantId,
-          type: 'COLLABORATIVE_DOCUMENT_CONFIRMED',
-          severity: 'INFO',
-          title: 'Documento colaborativo confirmado em fonte oficial',
-          message: `A contribuição ${pub.contributionId} foi confirmada via ${official.source.type} (hash).`,
-        },
-      });
-      matched++;
+      for (const pub of pubs) {
+        const ok = await this.confirmPublicationMatch(pub, official, 'CONTENT_HASH', 1);
+        if (ok) {
+          matched++;
+          method = 'CONTENT_HASH';
+        }
+      }
     }
-    return { matched };
+
+    // Fallback metadados: mesmo sindicato (unionMatchKey) + título muito similar.
+    // Exige similaridade alta para reduzir falso positivo.
+    if (matched === 0 && official.source.union) {
+      const key = unionMatchKey(official.source.union);
+      const pubs = await this.prisma.collaborativePublication.findMany({
+        where: { unionMatchKey: key, revokedAt: null },
+        include: { contribution: true },
+        take: 50,
+      });
+      const officialTitle = official.title || official.instrument?.title || '';
+      const registration = official.instrument?.registration || null;
+      for (const pub of pubs) {
+        if (pub.contribution.status === 'MATCHED_OFFICIAL_SOURCE') continue;
+        const sim = titleSimilarity(officialTitle, pub.title);
+        const regMatch =
+          registration &&
+          typeof (pub.contribution as any).notes === 'string' &&
+          String((pub.contribution as any).notes).includes(registration);
+        // registration no título da publicação também conta
+        const regInTitle =
+          registration && normalizeTitle(pub.title).includes(normalizeTitle(registration));
+        if (sim >= 0.72 || regMatch || regInTitle) {
+          const conf = regMatch || regInTitle ? 0.92 : Number(sim.toFixed(3));
+          const ok = await this.confirmPublicationMatch(pub, official, 'METADATA_TITLE_UNION', conf);
+          if (ok) {
+            matched++;
+            method = 'METADATA_TITLE_UNION';
+          }
+        }
+      }
+    }
+
+    return { matched, method };
+  }
+
+  private async confirmPublicationMatch(
+    pub: {
+      contributionId: string;
+      contributorTenantId: string;
+      contribution: { status: string };
+    },
+    official: { id: string; sourceId: string; source: { type: string } },
+    matchMethod: string,
+    confidence: number,
+  ) {
+    if (pub.contribution.status === 'MATCHED_OFFICIAL_SOURCE') return false;
+    await this.prisma.collaborativeContribution.update({
+      where: { id: pub.contributionId },
+      data: {
+        status: CollaborativeContributionStatus.MATCHED_OFFICIAL_SOURCE,
+        confirmedByOfficialSourceAt: new Date(),
+        officialSourceId: official.sourceId,
+        officialMatchMethod: matchMethod,
+        officialMatchConfidence: confidence,
+      },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: pub.contributorTenantId,
+        action: 'OFFICIAL_SOURCE_MATCHED',
+        entity: 'CollaborativeContribution',
+        entityId: pub.contributionId,
+        metadata: {
+          officialDocumentId: official.id,
+          officialSourceType: official.source.type,
+          method: matchMethod,
+          confidence,
+        },
+      },
+    });
+    await this.prisma.alert.create({
+      data: {
+        tenantId: pub.contributorTenantId,
+        type: 'COLLABORATIVE_DOCUMENT_CONFIRMED',
+        severity: 'INFO',
+        title: 'Documento colaborativo confirmado em fonte oficial',
+        message: `Documento colaborativo posteriormente confirmado em fonte oficial (${official.source.type}, ${matchMethod}).`,
+      },
+    });
+    return true;
+  }
+
+  private async relatedCompaniesForViewer(tenantId: string, matchKey: string) {
+    const unions = await this.prisma.union.findMany({
+      where: { tenantId },
+      select: { id: true, cnpj: true, name: true, states: true },
+    });
+    const unionIds = unions.filter((u) => unionMatchKey(u) === matchKey).map((u) => u.id);
+    if (!unionIds.length) return { count: 0 };
+    const count = await this.prisma.companyUnion.count({
+      where: {
+        unionId: { in: unionIds },
+        status: { in: ['CONFIRMED', 'SUGGESTED', 'NEEDS_REVIEW'] },
+        company: { tenantId, active: true },
+      },
+    });
+    return { count };
   }
 
   async surveillanceOverlay(tenantId: string) {

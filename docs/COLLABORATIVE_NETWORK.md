@@ -68,7 +68,20 @@ OWNER/ADMIN do tenant remetente: aprovar, rejeitar, solicitar revisão, marcar d
 
 ## Confirmação oficial
 
-Quando um documento `MEDIADOR_MTE` / sindical / boletim com o mesmo `contentHash` é armazenado, o worker chama `matchCollaborativeOfficialByHash` → status `MATCHED_OFFICIAL_SOURCE` + alerta `COLLABORATIVE_DOCUMENT_CONFIRMED`.
+Quando um documento `MEDIADOR_MTE` / sindical / boletim é armazenado:
+
+1. **CONTENT_HASH** (preferencial, confiança 1.0)
+2. **METADATA_TITLE_UNION** (fallback): mesmo `unionMatchKey` + similaridade de título ≥ 0.72 (ou registro no título)
+
+Atualiza status `MATCHED_OFFICIAL_SOURCE` + alerta `COLLABORATIVE_DOCUMENT_CONFIRMED`.
+
+## Reputação interna
+
+`GET /collaborative/reputation` (OWNER/ADMIN): `totalContributions`, `approvedContributions`, `officiallyConfirmedContributions`, `rejectedContributions`, `confirmationRate`. Sem ranking público.
+
+## Empresas relacionadas
+
+No acesso à publicação, o consumidor vê `relatedCompaniesCount` e aviso explícito de fonte COLABORATIVA / status oficial / necessidade de revisão humana.
 
 ## Alertas novos
 

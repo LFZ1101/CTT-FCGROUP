@@ -30,9 +30,12 @@ export default function RedePage() {
   async function openDoc(publicationId: string) {
     try {
       const access = await api<any>(`/collaborative/network/${publicationId}/access`);
-      setMsg(
-        `${access.originLabel} · ${access.officialConfirmed ? 'Confirmado em fonte oficial' : 'Ainda sem confirmação oficial'}`,
-      );
+      const parts = [
+        access.originLabel,
+        access.officialConfirmed ? 'Confirmado em fonte oficial' : 'Ainda sem confirmação oficial',
+        access.relatedCompaniesNote || null,
+      ].filter(Boolean);
+      setMsg(parts.join(' · '));
       if (access.url) window.open(access.url, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
       setMsg(e?.message || 'Acesso negado');

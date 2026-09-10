@@ -21,6 +21,12 @@ export class CollaborativeController {
     return this.service.overview(u.tenantId);
   }
 
+  @Get('reputation')
+  @Roles('OWNER', 'ADMIN')
+  reputation(@CurrentUser() u: AuthUser) {
+    return this.service.reputation(u.tenantId);
+  }
+
   @Post('contributions')
   @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST')
   submit(@CurrentUser() u: AuthUser, @Body() dto: SubmitContributionDto) {

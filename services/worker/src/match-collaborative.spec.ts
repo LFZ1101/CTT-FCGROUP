@@ -22,7 +22,8 @@ describe('matchCollaborativeOfficialByHash', () => {
           id: 'd1',
           contentHash: 'abc',
           sourceId: 's1',
-          source: { type: 'MANUAL_UPLOAD' },
+          source: { type: 'MANUAL_UPLOAD', union: null },
+          instrument: null,
         }),
       },
       collaborativePublication: { findMany: async () => assert.fail('should not query pubs') },
@@ -43,7 +44,8 @@ describe('matchCollaborativeOfficialByHash', () => {
           id: 'd1',
           contentHash: 'abc',
           sourceId: 's1',
-          source: { type: 'MEDIADOR_MTE' },
+          source: { type: 'MEDIADOR_MTE', union: null },
+          instrument: null,
         }),
       },
       collaborativePublication: {
@@ -69,6 +71,7 @@ describe('matchCollaborativeOfficialByHash', () => {
       contentHash: 'abc',
     });
     assert.equal(r.matched, 1);
+    assert.equal(r.method, 'CONTENT_HASH');
     assert.equal(updates[0].data.status, 'MATCHED_OFFICIAL_SOURCE');
   });
 });

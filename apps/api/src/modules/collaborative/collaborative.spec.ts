@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   originTrustLabel,
   requestGroupKey,
+  titleSimilarity,
   unionMatchKey,
   CONSENT_TERM_VERSION,
 } from './collaborative.service';
@@ -35,6 +36,16 @@ describe('collaborative network helpers', () => {
     assert.equal(collab.level, 'COLLAB_VALIDATED');
     assert.equal(confirmed.level, 'COLLAB_CONFIRMED');
     assert.notEqual(official.tone, collab.tone);
+  });
+
+  it('titleSimilarity high for same CCT titles and low for unrelated', () => {
+    const high = titleSimilarity(
+      'CCT Sindicato Metalúrgicos 2026/2027',
+      'CCT Sindicato Metalurgicos 2026 2027',
+    );
+    const low = titleSimilarity('CCT Metalúrgicos 2026', 'Regimento interno escola municipal');
+    assert.ok(high >= 0.72);
+    assert.ok(low < 0.4);
   });
 
   it('consent term version is audited constant', () => {
