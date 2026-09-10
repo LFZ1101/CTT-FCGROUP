@@ -17,7 +17,8 @@ Base atual: **Fases 1–3K** (monitoramento → pipeline documental → validaç
 1. Copie `.env.example` → `.env` e `apps/web/.env.local.example` → `apps/web/.env.local`.
 2. Infra: `docker compose up -d` (Postgres, Redis, MinIO).
 3. `pnpm install`
-4. `pnpm db:generate && pnpm db:push && pnpm db:seed`
+4. `pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed`  
+   (alternativa rápida em dev: `pnpm db:push`)
 5. `pnpm dev:api` · `pnpm dev:web` · `pnpm dev:worker`
 
 ### Credenciais do seed
