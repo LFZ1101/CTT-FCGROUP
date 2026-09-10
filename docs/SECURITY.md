@@ -23,4 +23,3 @@
 
 - Sem CSRF (API token bearer; cookies de sessão não usados).
 - Testes de isolamento HTTP e2e ainda limitados (há contratos unitários + ownership).
-- OCR de PDFs escaneados ainda não integrado.

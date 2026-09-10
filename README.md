@@ -2,7 +2,7 @@
 
 Plataforma SaaS de inteligência trabalhista para escritórios contábeis.
 
-Base atual: **Fases 1–3O** (pipeline documental → RAG → alertas/e-mail → impacto em folha → login por slug).
+Base atual: **Fases 1–3P** (pipeline documental → RAG → folha/e-mail → auth slug → OCR opcional).
 
 ## Stack
 

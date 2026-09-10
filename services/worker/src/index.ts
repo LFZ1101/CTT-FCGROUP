@@ -26,6 +26,7 @@ import {
 } from './adapters/mediador.js';
 import { extensionForMime, isAllowedMime } from './mime.js';
 import { extractPages } from './extract.js';
+import { assessExtraction, maybeApplyOcr } from './ocr.js';
 import { classifyDocument } from './classify.js';
 import { segmentClauses } from './segment.js';
 import { extractMetadata } from './metadata.js';
@@ -366,8 +367,13 @@ async function parseDocument(documentId: string, tenantId: string) {
   try {
     await ensureBucket();
     const buffer = await readObject(doc.storageKey);
-    const pages = await extractPages(buffer, doc.mimeType);
+    let pages = await extractPages(buffer, doc.mimeType);
+    const assessment = assessExtraction(pages);
+    const ocrResult = await maybeApplyOcr(buffer, pages, assessment);
+    pages = ocrResult.pages;
     const extractedText = pages.map((p) => p.text).join('\n\n').trim();
+    const postOcrAssessment = assessExtraction(pages);
+    const stillNeedsOcr = postOcrAssessment.needsOcr;
 
     await prisma.$transaction([
       prisma.documentPage.deleteMany({ where: { discoveredDocumentId: doc.id, tenantId } }),
@@ -387,6 +393,15 @@ async function parseDocument(documentId: string, tenantId: string) {
           extractedText,
           pageCount: pages.length,
           parsedAt: new Date(),
+          metadata: {
+            ...((doc.metadata as Record<string, unknown>) || {}),
+            ocr: {
+              ...ocrResult.ocr,
+              needsOcr: stillNeedsOcr || assessment.needsOcr,
+              initial: assessment,
+              after: postOcrAssessment,
+            },
+          },
         },
       }),
     ]);
@@ -408,7 +423,8 @@ async function parseDocument(documentId: string, tenantId: string) {
       classification.confidence < 0.8 ||
       classification.documentClass === DocumentClass.UNKNOWN ||
       classification.documentClass === DocumentClass.IRRELEVANT ||
-      weakMetadata;
+      weakMetadata ||
+      stillNeedsOcr;
 
     await prisma.discoveredDocument.update({
       where: { id: doc.id },
@@ -422,6 +438,12 @@ async function parseDocument(documentId: string, tenantId: string) {
         needsReview,
         metadata: {
           ...((doc.metadata as Record<string, unknown>) || {}),
+          ocr: {
+            ...ocrResult.ocr,
+            needsOcr: stillNeedsOcr || assessment.needsOcr,
+            initial: assessment,
+            after: postOcrAssessment,
+          },
           classificationEvidence: classification.evidence,
           structured: {
             title: metadata.title,

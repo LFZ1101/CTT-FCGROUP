@@ -16,6 +16,8 @@ RUN pnpm --filter @cct/worker build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# OCR opcional (OCR_ENABLED=true): poppler + tesseract
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-por tesseract-ocr-data-eng || true
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/services/worker/dist ./services/worker/dist
 COPY --from=build /app/services/worker/package.json ./services/worker/package.json

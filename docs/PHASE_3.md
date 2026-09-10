@@ -161,9 +161,16 @@
 - `RedisRateLimiter` (INCR/PEXPIRE) com fallback `MemoryRateLimiter`
 - E2E smoke cobre login com slug; testes unitários de ambiguidade
 
+## 3P — OCR opcional para PDFs escaneados (entregue)
+
+- `assessExtraction` detecta baixa densidade textual / páginas vazias
+- `maybeApplyOcr` com `pdftoppm` + `tesseract` quando `OCR_ENABLED=true`
+- Sem binários/OCR: parse segue, `metadata.ocr` + `needsReview`
+- UI do documento: badge e checklist de OCR; ADR 0004
+- Dockerfile do worker inclui poppler/tesseract (por+eng)
+
 ## Próximo
 
-- OCR PDFs escaneados
 - Mediador staging real / anti-bot
 - Observabilidade OTel/Sentry
 - Push notifications

@@ -67,6 +67,7 @@
 18. Motor de impacto em folha (`GET /payroll-impact/comparisons/:id`) + UI no comparador
 19. Notificações SMTP opcionais (`POST /notifications/alerts/email`)
 20. Login multi-tenant por `tenantSlug` + rate limit Redis (fallback memória); UI e e2e smoke
+21. OCR opcional (detecção + pdftoppm/tesseract); ADR 0004; badge na UI documental
 
 ## Arquitetura final
 
@@ -122,6 +123,7 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvect
 - UX polish / acessibilidade formal
 - Observabilidade OTel/Sentry
 - Push notifications (só e-mail SMTP)
+- OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
 
 ## Riscos
 
@@ -152,7 +154,6 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Próximos passos
 
-1. OCR / PDFs escaneados
-2. Validar Mediador em staging com fonte real
-3. Observabilidade (OTel/Sentry)
-4. Push notifications
+1. Validar Mediador em staging com fonte real
+2. Observabilidade (OTel/Sentry)
+3. Push notifications

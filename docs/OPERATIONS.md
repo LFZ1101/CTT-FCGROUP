@@ -44,6 +44,13 @@ Worker consome `source-monitoring`, `document-download`, `document-parse`. Inter
 - `GET /payroll-impact/comparisons/:comparisonId` — fatores heurísticos com evidência
 - UI em `/instrumentos/comparar` após resultado/histórico
 
+## OCR (PDFs escaneados)
+
+- Detecção automática de baixa densidade textual no parse do worker
+- Ativar: `OCR_ENABLED=true` (requer `pdftoppm` + `tesseract`; imagem Docker do worker já instala)
+- Opcional: `OCR_LANG=por+eng`, `OCR_MAX_PAGES=20`
+- Sem OCR: parse continua e documento fica com `needsReview` + `metadata.ocr`
+
 ## Postgres / pgvector
 
 Compose e CI usam `pgvector/pgvector:pg16`. Se o volume local foi criado com `postgres:16-alpine`, a migration `20260910140000_pgvector_embeddings` falha até recriar o volume (`docker compose down -v && docker compose up -d`). Sem a extensão, o RAG continua com embeddings JSON.

@@ -43,6 +43,14 @@ type Doc = {
     structured?: Record<string, unknown>;
     fieldEvidence?: FieldEvidence[];
     classificationEvidence?: Array<{ page?: number | null; snippet?: string; pattern?: string }>;
+    ocr?: {
+      needsOcr?: boolean;
+      attempted?: boolean;
+      applied?: boolean;
+      engine?: string | null;
+      reason?: string;
+      pagesOcrd?: number;
+    };
   } | null;
   pages?: Page[];
   clauses?: Clause[];
@@ -115,6 +123,7 @@ export default function DocumentoPage() {
   const page = doc?.pages?.find((p) => p.pageNumber === activePage);
   const structured = doc?.metadata?.structured || {};
   const fieldEvidence = doc?.metadata?.fieldEvidence || [];
+  const ocrMeta = doc?.metadata?.ocr;
   const humanReview = (doc?.metadata as any)?.humanReview as
     | { decision?: string; at?: string; notes?: string | null }
     | undefined;
@@ -127,6 +136,12 @@ export default function DocumentoPage() {
     {
       ok: (doc?.pageCount || 0) > 0 || (doc?.pages?.length || 0) > 0,
       label: 'Texto por página disponível',
+    },
+    {
+      ok: !ocrMeta?.needsOcr || !!ocrMeta?.applied,
+      label: ocrMeta?.applied
+        ? 'OCR aplicado com ganho textual'
+        : 'Texto suficiente (OCR não pendente)',
     },
     {
       ok: fieldEvidence.length > 0,
@@ -168,6 +183,13 @@ export default function DocumentoPage() {
               <span className={`badge ${doc.needsReview ? 'warn' : 'ok'}`}>
                 {doc.needsReview ? 'Revisão necessária' : 'Revisão opcional'}
               </span>
+              {ocrMeta?.needsOcr ? (
+                <span className={`badge ${ocrMeta.applied ? 'ok' : 'warn'}`}>
+                  {ocrMeta.applied
+                    ? `OCR ok${ocrMeta.engine ? ` · ${ocrMeta.engine}` : ''}`
+                    : `OCR pendente${ocrMeta.reason ? ` · ${ocrMeta.reason}` : ''}`}
+                </span>
+              ) : null}
               <span className="badge">{doc.pageCount || 0} páginas</span>
               <span className="badge">{doc.clauses?.length || 0} cláusulas</span>
               <span className="badge">{fieldEvidence.length} metadados</span>

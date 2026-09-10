@@ -8,7 +8,7 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 1 | Hardening arquitetura | DONE_NEEDS_TESTS |
 | 2 | Storage documentos | DONE_NEEDS_TESTS |
 | 3 | Pipeline download | DONE_NEEDS_TESTS |
-| 4 | Extração textual | DONE_NEEDS_TESTS |
+| 4 | Extração textual | DONE_NEEDS_TESTS (OCR opcional 3P) |
 | 5 | Page mapping | DONE_NEEDS_TESTS |
 | 6 | Classificação | DONE_NEEDS_TESTS |
 | 7 | Metadados estruturados | DONE_NEEDS_TESTS |
@@ -31,7 +31,6 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 
 ## Próximos (não bloqueantes)
 
-- OCR para PDFs escaneados
 - Adaptador Mediador em produção real (anti-bot/JS)
 - Observabilidade OTel/Sentry
 - Push notifications (além de e-mail)
