@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { TenantOwnershipService } from '../../common/tenancy/tenant-ownership.service';
 import { CreateAlertDto } from './dto/alert.dto';
 
 const EXPIRY_WINDOW_DAYS = 60;
 
 @Injectable()
 export class AlertsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ownership: TenantOwnershipService,
+  ) {}
 
   list(tenantId: string) {
     return this.prisma.alert.findMany({
@@ -16,7 +20,9 @@ export class AlertsService {
     });
   }
 
-  create(tenantId: string, dto: CreateAlertDto) {
+  async create(tenantId: string, dto: CreateAlertDto) {
+    await this.ownership.assertCompany(tenantId, dto.companyId);
+    await this.ownership.assertInstrument(tenantId, dto.instrumentId);
     return this.prisma.alert.create({ data: { tenantId, ...dto } });
   }
 
@@ -29,10 +35,6 @@ export class AlertsService {
     return { updated: true };
   }
 
-  /**
-   * Gera alertas de vigência próximos do fim (idempotente por instrumento+janela).
-   * Não duplica alerta aberto do mesmo tipo para o mesmo instrumento.
-   */
   async scanExpiringInstruments(tenantId: string, withinDays = EXPIRY_WINDOW_DAYS) {
     const now = new Date();
     const until = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);

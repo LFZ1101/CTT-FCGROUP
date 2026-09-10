@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { TenantOwnershipService } from '../../common/tenancy/tenant-ownership.service';
 import { CreateSourceDto, UpdateSourceDto } from './dto/source.dto';
 
 @Injectable()
 export class SourcesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ownership: TenantOwnershipService,
+  ) {}
 
   list(tenantId: string) {
     return this.prisma.source.findMany({
@@ -23,7 +27,8 @@ export class SourcesService {
     return source;
   }
 
-  create(tenantId: string, dto: CreateSourceDto) {
+  async create(tenantId: string, dto: CreateSourceDto) {
+    await this.ownership.assertUnion(tenantId, dto.unionId);
     return this.prisma.source.create({
       data: {
         tenantId,
@@ -37,6 +42,7 @@ export class SourcesService {
 
   async update(tenantId: string, id: string, dto: UpdateSourceDto) {
     await this.get(tenantId, id);
+    if (dto.unionId) await this.ownership.assertUnion(tenantId, dto.unionId);
     return this.prisma.source.update({
       where: { id },
       data: {

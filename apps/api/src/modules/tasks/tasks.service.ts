@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TaskStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import { TenantOwnershipService } from '../../common/tenancy/tenant-ownership.service';
 import { CreateTaskDto } from './dto/task.dto';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ownership: TenantOwnershipService,
+  ) {}
 
   list(tenantId: string) {
     return this.prisma.task.findMany({
@@ -15,7 +19,10 @@ export class TasksService {
     });
   }
 
-  create(tenantId: string, dto: CreateTaskDto) {
+  async create(tenantId: string, dto: CreateTaskDto) {
+    await this.ownership.assertCompany(tenantId, dto.companyId);
+    await this.ownership.assertInstrument(tenantId, dto.instrumentId);
+    await this.ownership.assertUser(tenantId, dto.assigneeId);
     return this.prisma.task.create({
       data: {
         tenantId,
@@ -39,10 +46,6 @@ export class TasksService {
     return { updated: true, status };
   }
 
-  /**
-   * Cria tarefas abertas para instrumentos PENDING_REVIEW sem tarefa equivalente.
-   * Idempotente: não duplica enquanto existir TODO/IN_PROGRESS do tipo REVIEW_INSTRUMENT.
-   */
   async syncPendingReviewTasks(tenantId: string) {
     const pending = await this.prisma.collectiveInstrument.findMany({
       where: { tenantId, status: 'PENDING_REVIEW' },

@@ -57,6 +57,7 @@
 10. Dockerfiles api/web/worker
 11. Docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT + ADR 0001
 12. Testes RolesGuard, tenant-scope, search ranking, mediador
+13. Rate limit de login + validação de FKs cross-tenant (alerts/tasks/sources)
 
 ## Arquitetura final
 

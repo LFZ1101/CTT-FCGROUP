@@ -8,7 +8,8 @@
 - Validação de DTOs (`class-validator`).
 - Uploads/downloads via storage; URLs assinadas com expiração.
 - Hash SHA-256 de conteúdo; allowlist MIME no worker.
-- Auditoria (`AuditLog`) em operações relevantes (validação, RAG, comparação, etc.).
+- Rate limit em memória no login (10 tentativas / 15 min por e-mail; cluster → Redis).
+- Validação de ownership de FKs (empresa/instrumento/sindicato/usuário) no mesmo tenant em alerts/tasks/sources.
 
 ## Práticas
 
@@ -19,7 +20,7 @@
 
 ## Lacunas conhecidas
 
-- Sem rate limiting nativo na API.
+- Rate limit de login é por processo (não compartilhado entre réplicas sem Redis).
 - Sem CSRF (API token bearer; cookies de sessão não usados).
 - Login ainda por e-mail (atenção a e-mails duplicados entre tenants).
-- Testes de isolamento HTTP e2e ainda limitados (há contratos unitários).
+- Testes de isolamento HTTP e2e ainda limitados (há contratos unitários + ownership).
