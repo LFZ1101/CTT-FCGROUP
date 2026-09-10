@@ -79,6 +79,7 @@ model Tenant {
   instrumentComparisons InstrumentComparison[]
   documentChunks DocumentChunk[]
   pushSubscriptions PushSubscription[]
+  notificationPreferences NotificationPreference[]
 }
 
 model User {
@@ -98,6 +99,7 @@ model User {
   tasks     Task[]   @relation("TaskAssignee")
   auditLogs AuditLog[]
   pushSubscriptions PushSubscription[]
+  notificationPreference NotificationPreference?
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -373,6 +375,25 @@ model PushSubscription {
 
   @@unique([tenantId, endpoint])
   @@index([tenantId, userId])
+}
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  tenantId       String
+  userId         String   @unique
+  emailEnabled   Boolean  @default(true)
+  pushEnabled    Boolean  @default(true)
+  /// INFO | WARNING | CRITICAL — severidade mínima para receber
+  minSeverity    String   @default("WARNING")
+  mutedTypes     String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
 }
 
 model Task {

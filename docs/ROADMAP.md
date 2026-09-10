@@ -31,6 +31,5 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 
 ## Próximos (não bloqueantes)
 
-- Preferências de notificação por usuário
 - OpenTelemetry traces
 - Mediador anti-bot avançado (automação controlada)

@@ -70,6 +70,7 @@ Worker consome `source-monitoring`, `document-download`, `document-parse`. Inter
 - Gerar chaves: `npx web-push generate-vapid-keys`
 - Env: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 - UI: botão “Ativar Web Push” em `/alertas` (requer HTTPS ou localhost)
+- Preferências: e-mail/push, severidade mínima e tipos silenciados (`GET|PUT /notifications/preferences`)
 
 ## Postgres / pgvector
 

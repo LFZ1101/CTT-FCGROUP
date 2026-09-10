@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { MailService } from './mail.service';
 import { deliverWebhook } from './webhook';
 import { getVapidPublicKey, isWebPushConfigured, sendWebPush } from './webpush';
+import { allowsChannel, DEFAULT_PREFERENCE, PreferenceLike } from './preferences';
 
 @Injectable()
 export class NotificationsService {
@@ -15,6 +16,59 @@ export class NotificationsService {
     return {
       configured: isWebPushConfigured(),
       publicKey: getVapidPublicKey(),
+    };
+  }
+
+  async getPreferences(tenantId: string, userId: string) {
+    const row = await this.prisma.notificationPreference.findUnique({
+      where: { tenantId_userId: { tenantId, userId } },
+    });
+    return {
+      emailEnabled: row?.emailEnabled ?? DEFAULT_PREFERENCE.emailEnabled,
+      pushEnabled: row?.pushEnabled ?? DEFAULT_PREFERENCE.pushEnabled,
+      minSeverity: row?.minSeverity ?? DEFAULT_PREFERENCE.minSeverity,
+      mutedTypes: row?.mutedTypes ?? DEFAULT_PREFERENCE.mutedTypes,
+      persisted: Boolean(row),
+    };
+  }
+
+  async upsertPreferences(
+    tenantId: string,
+    userId: string,
+    input: {
+      emailEnabled?: boolean;
+      pushEnabled?: boolean;
+      minSeverity?: string;
+      mutedTypes?: string[];
+    },
+  ) {
+    const minSeverity = (input.minSeverity || 'WARNING').toUpperCase();
+    if (!['INFO', 'WARNING', 'CRITICAL'].includes(minSeverity)) {
+      return this.getPreferences(tenantId, userId);
+    }
+    const row = await this.prisma.notificationPreference.upsert({
+      where: { tenantId_userId: { tenantId, userId } },
+      create: {
+        tenantId,
+        userId,
+        emailEnabled: input.emailEnabled ?? true,
+        pushEnabled: input.pushEnabled ?? true,
+        minSeverity,
+        mutedTypes: input.mutedTypes ?? [],
+      },
+      update: {
+        ...(input.emailEnabled !== undefined ? { emailEnabled: input.emailEnabled } : {}),
+        ...(input.pushEnabled !== undefined ? { pushEnabled: input.pushEnabled } : {}),
+        minSeverity,
+        ...(input.mutedTypes !== undefined ? { mutedTypes: input.mutedTypes } : {}),
+      },
+    });
+    return {
+      emailEnabled: row.emailEnabled,
+      pushEnabled: row.pushEnabled,
+      minSeverity: row.minSeverity,
+      mutedTypes: row.mutedTypes,
+      persisted: true,
     };
   }
 
@@ -50,8 +104,7 @@ export class NotificationsService {
   }
 
   /**
-   * Notifica owners/admins do tenant sobre alerta crítico/warning recente.
-   * Canais: e-mail (SMTP) + webhook + Web Push (VAPID).
+   * Notifica sobre alerta: e-mail (por preferência), webhook (tenant) e push (por preferência).
    */
   async notifyAlert(tenantId: string, alertId: string) {
     const alert = await this.prisma.alert.findFirst({ where: { id: alertId, tenantId } });
@@ -70,19 +123,26 @@ export class NotificationsService {
       };
     }
 
+    const users = await this.prisma.user.findMany({
+      where: { tenantId, active: true, role: { in: ['OWNER', 'ADMIN', 'DP_MANAGER'] } },
+      include: { notificationPreference: true },
+    });
+
+    const alertMeta = { severity: alert.severity, type: alert.type };
+    const emailRecipients = users
+      .filter((u) =>
+        allowsChannel(u.notificationPreference as PreferenceLike | null, 'email', alertMeta),
+      )
+      .map((u) => u.email);
+
     const configured = (process.env.NOTIFY_EMAILS || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
 
-    let recipients = configured;
-    if (!recipients.length) {
-      const users = await this.prisma.user.findMany({
-        where: { tenantId, active: true, role: { in: ['OWNER', 'ADMIN', 'DP_MANAGER'] } },
-        select: { email: true },
-      });
-      recipients = users.map((u) => u.email);
-    }
+    // NOTIFY_EMAILS override ainda respeita preferências só quando vazio;
+    // se configurado, envia para a lista fixa (ops).
+    const recipients = configured.length ? configured : emailRecipients;
 
     const email =
       recipients.length === 0
@@ -107,12 +167,24 @@ export class NotificationsService {
       timestamp: new Date().toISOString(),
     });
 
-    const push = await this.dispatchPush(tenantId, {
-      title: `${alert.severity}: ${alert.title}`,
-      body: alert.message.slice(0, 180),
-      url: '/alertas',
-      tag: `alert-${alert.id}`,
-    });
+    const allowedUserIds = new Set(
+      users
+        .filter((u) =>
+          allowsChannel(u.notificationPreference as PreferenceLike | null, 'push', alertMeta),
+        )
+        .map((u) => u.id),
+    );
+
+    const push = await this.dispatchPush(
+      tenantId,
+      {
+        title: `${alert.severity}: ${alert.title}`,
+        body: alert.message.slice(0, 180),
+        url: '/alertas',
+        tag: `alert-${alert.id}`,
+      },
+      allowedUserIds,
+    );
 
     await this.prisma.auditLog.create({
       data: {
@@ -134,11 +206,14 @@ export class NotificationsService {
   private async dispatchPush(
     tenantId: string,
     payload: { title: string; body: string; url?: string; tag?: string },
+    allowedUserIds: Set<string>,
   ) {
     if (!isWebPushConfigured()) {
       return { sent: 0, skipped: true as const, reason: 'vapid_unconfigured' };
     }
-    const subs = await this.prisma.pushSubscription.findMany({ where: { tenantId } });
+    const subs = await this.prisma.pushSubscription.findMany({
+      where: { tenantId, userId: { in: [...allowedUserIds] } },
+    });
     if (!subs.length) {
       return { sent: 0, skipped: true as const, reason: 'no_subscriptions' };
     }

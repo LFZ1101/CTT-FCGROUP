@@ -1,9 +1,15 @@
-import { Body, Controller, Delete, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthUser } from '../../common/decorators/current-user.decorator';
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { NotificationsService } from './notifications.service';
 
@@ -37,10 +43,41 @@ class PushUnsubscribeDto {
   endpoint!: string;
 }
 
+class PreferencesDto {
+  @IsOptional()
+  @IsBoolean()
+  emailEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pushEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  minSeverity?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  mutedTypes?: string[];
+}
+
 @UseGuards(AuthGuard, RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly service: NotificationsService) {}
+
+  @Get('preferences')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST', 'AUDITOR', 'CLIENT')
+  getPreferences(@CurrentUser() user: AuthUser) {
+    return this.service.getPreferences(user.tenantId, user.sub);
+  }
+
+  @Put('preferences')
+  @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST', 'AUDITOR', 'CLIENT')
+  putPreferences(@CurrentUser() user: AuthUser, @Body() dto: PreferencesDto) {
+    return this.service.upsertPreferences(user.tenantId, user.sub, dto);
+  }
 
   @Get('push/vapid-public-key')
   @Roles('OWNER', 'ADMIN', 'DP_MANAGER', 'ANALYST', 'AUDITOR', 'CLIENT')

@@ -71,6 +71,7 @@
 22. Observabilidade leve (requestId, metrics, Sentry opt) + retry Mediador; ADR 0005
 23. Webhooks de alerta + gate/fixture Mediador; ADR 0006
 24. Web Push VAPID (subscribe + fan-out); ADR 0007
+25. Preferências de notificação por usuário; ADR 0008
 
 ## Arquitetura final
 
@@ -125,7 +126,6 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvect
 - Build/push de imagens Docker em registry
 - UX polish / acessibilidade formal
 - Observabilidade OTel traces (há Sentry/metrics/requestId)
-- Preferências granulares de notificação (há e-mail/webhook/push)
 - OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
 
 ## Riscos
@@ -157,6 +157,5 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Próximos passos
 
-1. Preferências de notificação por usuário
-2. OpenTelemetry traces
-3. Mediador anti-bot avançado
+1. OpenTelemetry traces
+2. Mediador anti-bot avançado

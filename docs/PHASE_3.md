@@ -188,8 +188,13 @@
 - Endpoints subscribe/unsubscribe + chave pública VAPID
 - Fan-out push em `notifyAlert`; SW + UI em `/alertas`; ADR 0007
 
+## 3T — Preferências de notificação (entregue)
+
+- Modelo `NotificationPreference` (email/push, minSeverity, mutedTypes)
+- `GET|PUT /notifications/preferences` + UI em `/alertas`
+- Fan-out respeita preferências; ADR 0008
+
 ## Próximo
 
-- Preferências de notificação por usuário/tipo
 - OpenTelemetry traces
 - Mediador anti-bot avançado (browser automation controlada)

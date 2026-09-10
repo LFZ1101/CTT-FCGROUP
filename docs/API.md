@@ -32,6 +32,7 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | Documentos | `POST /documents/:id/review` — revisão humana do artefato |
 | Payroll | `GET /payroll-impact/comparisons/:comparisonId` |
 | Notificações | `POST /notifications/alerts/email` → `{ email, webhook, push }` |
+| Preferências | `GET|PUT /notifications/preferences` |
 | Web Push | `GET /notifications/push/vapid-public-key`, `POST|DELETE /notifications/push/subscribe` |
 
 Mutações sensíveis exigem `@Roles` (OWNER/ADMIN/DP_MANAGER/ANALYST conforme rota). Leituras autenticadas; CLIENT/AUDITOR sem mutação onde RolesGuard aplica.
