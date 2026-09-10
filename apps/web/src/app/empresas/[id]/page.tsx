@@ -19,6 +19,8 @@ type CompanyUnion = {
   id: string;
   kind: string;
   confirmed: boolean;
+  status?: string;
+  confidence?: number | null;
   union: Union;
 };
 
@@ -42,6 +44,7 @@ export default function EmpresaDetalhePage() {
   const [kind, setKind] = useState('LABOR');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [suggestions, setSuggestions] = useState<any>(null);
 
   const load = async () => {
     try {
@@ -87,6 +90,46 @@ export default function EmpresaDetalhePage() {
       await load();
     } catch (err: any) {
       setError(err?.message || 'Falha ao remover vínculo');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadSuggestions = async () => {
+    setBusy(true);
+    try {
+      const s = await api(`/companies/${params.id}/union-suggestions`);
+      setSuggestions(s);
+    } catch (err: any) {
+      setError(err?.message || 'Falha ao sugerir sindicatos');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const persistSuggestions = async () => {
+    setBusy(true);
+    try {
+      await api(`/companies/${params.id}/union-suggestions/persist`, { method: 'POST', body: '{}' });
+      await load();
+      await loadSuggestions();
+    } catch (err: any) {
+      setError(err?.message || 'Falha ao salvar sugestões');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const decide = async (linkId: string, decision: 'CONFIRM' | 'REJECT') => {
+    setBusy(true);
+    try {
+      await api(`/company-unions/${linkId}/decide`, {
+        method: 'POST',
+        body: JSON.stringify({ decision }),
+      });
+      await load();
+    } catch (err: any) {
+      setError(err?.message || 'Falha na decisão');
     } finally {
       setBusy(false);
     }
@@ -208,11 +251,22 @@ export default function EmpresaDetalhePage() {
                           {(cu.union.categories || []).slice(0, 3).join(', ') || '—'}
                         </td>
                         <td>
-                          <span className={`badge ${cu.confirmed ? 'ok' : 'warn'}`}>
-                            {cu.confirmed ? 'Confirmado' : 'Pendente'}
+                          <span className={`badge ${cu.confirmed || cu.status === 'CONFIRMED' ? 'ok' : 'warn'}`}>
+                            {cu.status || (cu.confirmed ? 'Confirmado' : 'Pendente')}
+                            {cu.confidence != null ? ` · ${Math.round(cu.confidence * 100)}%` : ''}
                           </span>
                         </td>
-                        <td>
+                        <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {cu.status && cu.status !== 'CONFIRMED' ? (
+                            <button className="secondary" disabled={busy} onClick={() => void decide(cu.id, 'CONFIRM')}>
+                              Confirmar
+                            </button>
+                          ) : null}
+                          {cu.status && cu.status !== 'REJECTED' ? (
+                            <button className="secondary" disabled={busy} onClick={() => void decide(cu.id, 'REJECT')}>
+                              Rejeitar
+                            </button>
+                          ) : null}
                           <button className="secondary" disabled={busy} onClick={() => unlink(cu.id)}>
                             Remover
                           </button>
@@ -228,6 +282,51 @@ export default function EmpresaDetalhePage() {
                     ) : null}
                   </tbody>
                 </table>
+              </div>
+            </section>
+
+            <section className="panel" style={{ marginTop: 14 }}>
+              <div className="panelhead">
+                <div>
+                  <span className="eyebrow">VÍNCULO ASSISTIDO</span>
+                  <h2>Sindicatos potencialmente aplicáveis</h2>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="secondary" type="button" disabled={busy} onClick={() => void loadSuggestions()}>
+                    Sugerir
+                  </button>
+                  <button className="primary" type="button" disabled={busy} onClick={() => void persistSuggestions()}>
+                    Salvar sugestões
+                  </button>
+                </div>
+              </div>
+              <div style={{ padding: 14 }}>
+                <p className="feedmeta" style={{ marginBottom: 10 }}>
+                  {suggestions?.disclaimer ||
+                    'Score explicável com validação humana. Não afirma o sindicato correto.'}
+                </p>
+                {(suggestions?.suggestions || []).length ? (
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {suggestions.suggestions.map((s: any) => (
+                      <div key={`${s.unionId}-${s.kind}`} className="attn">
+                        <strong>
+                          {s.unionName} · {Math.round(s.score * 100)}% · {s.kind}
+                        </strong>
+                        <p>{s.label}</p>
+                        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12 }}>
+                          {(s.factors || []).map((f: any) => (
+                            <li key={f.code}>
+                              {f.status === 'match' ? '✓' : f.status === 'warning' ? '!' : '~'} {f.label}:{' '}
+                              {f.detail}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty">Clique em Sugerir para ranquear sindicatos candidatos.</div>
+                )}
               </div>
             </section>
           </>

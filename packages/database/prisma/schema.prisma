@@ -80,6 +80,7 @@ model Tenant {
   documentChunks DocumentChunk[]
   pushSubscriptions PushSubscription[]
   notificationPreferences NotificationPreference[]
+  detectedDeadlines DetectedDeadline[]
 }
 
 model User {
@@ -154,17 +155,28 @@ model Union {
 }
 
 model CompanyUnion {
-  id        String   @id @default(cuid())
-  companyId String
-  unionId   String
-  kind      String
-  confirmed Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  companyId        String
+  unionId          String
+  kind             String
+  /// SUGGESTED | CONFIRMED | REJECTED | NEEDS_REVIEW
+  status           String    @default("CONFIRMED")
+  confidence       Float?
+  validationMethod String?
+  validatedBy      String?
+  validatedAt      DateTime?
+  notes            String?
+  /// @deprecated use status; mantido para compatibilidade
+  confirmed        Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  union     Union    @relation(fields: [unionId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  union   Union   @relation(fields: [unionId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, unionId, kind])
+  @@index([unionId, status])
+  @@index([companyId, status])
 }
 
 model CollectiveInstrument {
@@ -184,6 +196,8 @@ model CollectiveInstrument {
   documentHash  String?
   rawText       String?
   summary       String?
+  /// Resumo operacional estruturado (reajuste, piso, VA, prazos, etc.)
+  operationalSummary Json?
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
 
@@ -198,6 +212,7 @@ model CollectiveInstrument {
   comparisonsAsPrevious InstrumentComparison[] @relation("ComparisonPrevious")
   comparisonsAsCurrent  InstrumentComparison[] @relation("ComparisonCurrent")
   chunks                DocumentChunk[]
+  deadlines             DetectedDeadline[]
 
   @@index([tenantId])
   @@index([registration])
@@ -260,8 +275,39 @@ model InstrumentClause {
   previousInComparisons ClauseComparison[] @relation("ClauseComparisonPrevious")
   currentInComparisons  ClauseComparison[] @relation("ClauseComparisonCurrent")
   chunks       DocumentChunk[]
+  deadlines    DetectedDeadline[]
 
   @@index([instrumentId])
+}
+
+/// Prazos críticos extraídos de cláusulas (oposição, reajuste, etc.)
+model DetectedDeadline {
+  id          String    @id @default(cuid())
+  tenantId    String
+  instrumentId String
+  clauseId    String?
+  /// EMPLOYEE_OPPOSITION | EMPLOYER_OPPOSITION | SALARY_ADJUSTMENT | RETROACTIVE_PAYMENT | UNION_CONTRIBUTION | BENEFIT_UPDATE | OTHER
+  deadlineType String
+  startDate   DateTime?
+  dueDate     DateTime?
+  description String
+  sourcePage  Int?
+  sourceExcerpt String?
+  confidence  Float     @default(0.5)
+  /// OPEN | ACKNOWLEDGED | RESOLVED | DISMISSED
+  status      String    @default("OPEN")
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instrument CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  clause     InstrumentClause?    @relation(fields: [clauseId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, dueDate])
+  @@index([instrumentId, deadlineType])
+  @@index([tenantId, status, dueDate])
 }
 
 enum ComparisonStatus {

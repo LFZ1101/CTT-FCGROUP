@@ -64,6 +64,8 @@ export default function InstrumentoDetalhePage() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
+  const [impacted, setImpacted] = useState<any>(null);
 
   const load = async () => {
     try {
@@ -126,6 +128,34 @@ export default function InstrumentoDetalhePage() {
 
   const canReview = item && ['PENDING_REVIEW', 'DISCOVERED'].includes(item.status);
 
+  const extractOps = async () => {
+    setBusy(true);
+    try {
+      const r = await api<any>(`/instruments/${params.id}/extract-deadlines`, {
+        method: 'POST',
+        body: '{}',
+      });
+      setSummary(r.summary);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao extrair prazos/resumo');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const loadImpacted = async () => {
+    setBusy(true);
+    try {
+      const r = await api(`/instruments/${params.id}/impacted-companies`);
+      setImpacted(r);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao listar empresas impactadas');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Shell title="Instrumento">
       <div className="page">
@@ -147,8 +177,14 @@ export default function InstrumentoDetalhePage() {
               <span className="badge">{item.clauses?.length || 0} cláusulas</span>
               <a className="secondary" href="/instrumentos">Voltar</a>
               <a className="secondary" href={`/instrumentos/comparar?current=${item.id}`}>
-                Comparar versão
+                Principais mudanças
               </a>
+              <button className="secondary" type="button" disabled={busy} onClick={() => void extractOps()}>
+                Resumo + prazos
+              </button>
+              <button className="secondary" type="button" disabled={busy} onClick={() => void loadImpacted()}>
+                Empresas impactadas
+              </button>
               {item.sourceUrl ? (
                 <a className="secondary" href={item.sourceUrl} target="_blank" rel="noreferrer">
                   Fonte
@@ -159,6 +195,53 @@ export default function InstrumentoDetalhePage() {
             {(item.clauses?.length || 0) > 0 ? <AskPanel instrumentId={item.id} /> : null}
             <AuditTrail entity="CollectiveInstrument" entityId={item.id} />
 
+            {summary?.items?.length ? (
+              <section className="panel" style={{ marginBottom: 14 }}>
+                <div className="panelhead">
+                  <div>
+                    <span className="eyebrow">RESUMO OPERACIONAL</span>
+                    <h2>Principais condições com evidência</h2>
+                  </div>
+                </div>
+                <div style={{ padding: 14, display: 'grid', gap: 8 }}>
+                  {summary.items.map((it: any) => (
+                    <div key={it.code} className="attn">
+                      <strong>
+                        {it.label}: {it.value || '—'}
+                      </strong>
+                      <p>
+                        p.{it.page ?? '—'} · conf. {Math.round((it.confidence || 0) * 100)}% ·{' '}
+                        {(it.evidence || '').slice(0, 160)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {impacted ? (
+              <section className="panel" style={{ marginBottom: 14 }}>
+                <div className="panelhead">
+                  <div>
+                    <span className="eyebrow">IMPACTO</span>
+                    <h2>{impacted.count} empresa(s) potencialmente relacionada(s)</h2>
+                  </div>
+                </div>
+                <div style={{ padding: 14, display: 'grid', gap: 8 }}>
+                  {(impacted.companies || []).map((c: any) => (
+                    <div key={c.companyId} className="attn">
+                      <strong>
+                        {c.tradeName || c.legalName} · {c.cnpj}
+                      </strong>
+                      <p>
+                        {c.linkType || '—'} · {c.linkStatus || c.source} · conf.{' '}
+                        {c.confidence != null ? `${Math.round(c.confidence * 100)}%` : '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             <section className="panel" style={{ marginBottom: 14 }}>
               <div className="panelhead">
                 <div>

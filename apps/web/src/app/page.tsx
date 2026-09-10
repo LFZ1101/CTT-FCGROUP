@@ -15,9 +15,14 @@ const fallback = {
     docsReadyForReview: 0,
     docsFailed: 0,
     instrumentsExpiringSoon: 0,
+    newInstruments: 0,
+    criticalDeadlines: 0,
+    coveragePct: 0,
   },
+  attention: [] as any[],
   pipeline: [] as { status: string; count: number }[],
   recent: [] as any[],
+  mediador: { lastCheckedAt: null as string | null },
 };
 
 export default function Home() {
@@ -26,25 +31,54 @@ export default function Home() {
     api('/dashboard').then(setD).catch(() => {});
   }, []);
   const m = d.metrics || fallback.metrics;
+  const attention = d.attention || [];
 
   return (
     <Shell title="Visão geral">
       <div className="page">
         <PageHeader
-          eyebrow="Central de comando"
-          title="Inteligência trabalhista"
-          description="Acompanhe o que mudou, o que exige validação e onde sua equipe precisa agir."
+          eyebrow="O que exige atenção hoje"
+          title="Reduza o risco de uma mudança passar despercebida"
+          description="Novos instrumentos, prazos críticos, falhas de fonte e vínculos pendentes."
         />
+
+        <section className="panel" style={{ marginBottom: 16 }}>
+          <div className="panelhead">
+            <h2>Hoje</h2>
+            <span>
+              Mediador{' '}
+              {d.mediador?.lastCheckedAt
+                ? `consultado em ${new Date(d.mediador.lastCheckedAt).toLocaleString('pt-BR')}`
+                : 'sem consulta recente'}
+            </span>
+          </div>
+          <div className="attention">
+            {attention.length ? (
+              attention.map((a: any) => (
+                <div className="attn" key={a.code}>
+                  <strong>
+                    <Link href={a.href || '/alertas'}>{a.text}</Link>
+                  </strong>
+                  <p>{a.severity}</p>
+                </div>
+              ))
+            ) : (
+              <div className="attn">
+                <strong>Nada crítico no momento</strong>
+                <p>Continue monitorando fontes e validando vínculos sindicais.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
         <section className="metrics">
           {[
-            ['Empresas monitoradas', m.companies, 'carteira ativa'],
-            ['Instrumentos ativos', m.instruments, 'CCT, ACT e aditivos'],
+            ['Cobertura', `${m.coveragePct ?? 0}%`, 'carteira monitorada'],
+            ['Novos instrumentos', m.newInstruments ?? 0, '7 dias'],
+            ['Prazos críticos', m.criticalDeadlines ?? 0, 'próximos 7 dias'],
             ['Aguardando validação', m.pendingValidations, 'revisão humana'],
-            ['Docs p/ revisão', m.docsReadyForReview ?? 0, 'pipeline documental'],
+            ['Alertas não lidos', m.unreadAlerts, 'publicação e divergência'],
             ['Vigências (60d)', m.instrumentsExpiringSoon ?? 0, 'risco de vencimento'],
-            ['Alertas não lidos', m.unreadAlerts, 'mudanças e divergências'],
-            ['Tarefas abertas', m.openTasks, 'operação do DP'],
-            ['Docs falhos', m.docsFailed ?? 0, 'reprocessar'],
           ].map(([k, v, f]) => (
             <article className="metric" key={String(k)}>
               <div className="k">{k}</div>
@@ -57,7 +91,7 @@ export default function Home() {
           <section className="panel">
             <div className="panelhead">
               <h2>Movimentações recentes</h2>
-              <span>alertas do tenant</span>
+              <Link href="/alertas">alertas</Link>
             </div>
             <div className="feed">
               {d.recent?.length ? (
@@ -76,31 +110,34 @@ export default function Home() {
                   </div>
                 ))
               ) : (
-                <div className="empty">
-                  A atividade aparecerá aqui conforme fontes, instrumentos e alertas forem cadastrados.
-                </div>
+                <div className="empty">Sem alertas recentes.</div>
               )}
             </div>
           </section>
           <aside className="panel">
             <div className="panelhead">
-              <h2>Pipeline documental</h2>
-              <Link href="/documentos">abrir</Link>
+              <h2>Atalhos operacionais</h2>
+              <Link href="/vigilancia">vigilância</Link>
             </div>
             <div className="attention">
-              {(d.pipeline || []).length ? (
-                d.pipeline.map((p: any) => (
-                  <div className="attn" key={p.status}>
-                    <strong>{p.status}</strong>
-                    <p>{p.count} documento(s)</p>
-                  </div>
-                ))
-              ) : (
-                <div className="attn">
-                  <strong>Sem documentos ainda</strong>
-                  <p>Cadastre fontes e execute o monitoramento para iniciar a coleta.</p>
-                </div>
-              )}
+              <div className="attn">
+                <strong>
+                  <Link href="/vigilancia">Vigilância Sindical</Link>
+                </strong>
+                <p>Cobertura da carteira e saúde das fontes.</p>
+              </div>
+              <div className="attn">
+                <strong>
+                  <Link href="/prazos">Central de prazos</Link>
+                </strong>
+                <p>Oposição, reajuste e obrigações com evidência.</p>
+              </div>
+              <div className="attn">
+                <strong>
+                  <Link href="/instrumentos">Instrumentos</Link>
+                </strong>
+                <p>Novas CCT/ACT e empresas potencialmente impactadas.</p>
+              </div>
             </div>
           </aside>
         </div>
