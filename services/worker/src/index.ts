@@ -17,6 +17,11 @@ import {
 } from '@aws-sdk/client-s3';
 import FileType from 'file-type';
 import { normalizeUrl, extractCandidateLinks } from './scrape.js';
+import {
+  extractMediadorLinks,
+  isMediadorUrl,
+  mergeCandidates,
+} from './adapters/mediador.js';
 import { extensionForMime, isAllowedMime } from './mime.js';
 import { extractPages } from './extract.js';
 import { classifyDocument } from './classify.js';
@@ -94,7 +99,12 @@ async function monitorSource(sourceId: string) {
       headers: { 'user-agent': 'CCT-Intelligence-Monitor/1.0 (+compliance; contact-admin)' },
     });
     const html = await response.text();
-    const links = extractCandidateLinks(html, source.url);
+    const generic = extractCandidateLinks(html, source.url);
+    const mediadorExtra =
+      source.type === 'MEDIADOR_MTE' || isMediadorUrl(source.url)
+        ? extractMediadorLinks(html, source.url)
+        : [];
+    const links = mergeCandidates(generic, mediadorExtra);
     let newDocs = 0;
 
     for (const link of links) {

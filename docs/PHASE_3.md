@@ -116,8 +116,22 @@
 - UI `/auditoria` + painel `AuditTrail` em documento/instrumento.
 - Worker reindexa chunks já com embedding.
 
-## Próximo (3K+)
+## 3K — Hardening operacional + busca + alertas/tarefas (entregue nesta execução)
+
+- RBAC estendido a unions/sources/alerts/tasks/monitoring/dashboard.
+- CRUD sindicatos (PATCH/DELETE) e fontes (PATCH enable).
+- Busca documental `GET /documents/search?q=` + UI `/documentos`.
+- `POST /alerts/scan-expiring` e `POST /tasks/sync-review`.
+- Dashboard com pipeline/classes/vigências.
+- Adaptador Mediador heurístico no worker.
+- Health check com Postgres/Redis.
+- Dockerfiles api/web/worker + docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT.
+- Testes: RolesGuard, tenant-scope, search ranking, mediador adapter.
+
+## Próximo
 
 - pgvector nativo (substituir JSON embedding)
-- Diff semântico entre versões
-- Notificações/alertas operacionais avançados
+- E2E multi-tenant HTTP
+- Notificações externas / impacto em folha
+- Migrations versionadas em CI
+- Diff semântico entre versões (além do heurístico)

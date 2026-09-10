@@ -14,8 +14,8 @@
     "db:push": "pnpm --filter @cct/database prisma db push",
     "db:migrate": "pnpm --filter @cct/database prisma migrate dev",
     "db:seed": "pnpm --filter @cct/database seed",
-    "typecheck": "pnpm -r exec tsc --noEmit",
-    "lint": "pnpm --filter @cct/api exec tsc --noEmit && pnpm --filter @cct/worker exec tsc --noEmit && pnpm --filter @cct/web exec tsc --noEmit",
+    "typecheck": "pnpm --filter @cct/api exec tsc --noEmit && pnpm --filter @cct/worker exec tsc --noEmit && pnpm --filter @cct/web exec tsc --noEmit",
+    "lint": "pnpm typecheck",
     "test": "pnpm --filter @cct/api test && pnpm --filter @cct/worker test"
   }
 }

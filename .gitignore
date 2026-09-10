@@ -11,3 +11,4 @@ packages/database/prisma/migrations/*/migration_lock.toml
 packages/database/.env
 dump.rdb
 .data/
+*.tsbuildinfo

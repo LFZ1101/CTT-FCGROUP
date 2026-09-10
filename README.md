@@ -2,45 +2,46 @@
 
 Plataforma SaaS de inteligência trabalhista para escritórios contábeis.
 
-Base atual: **Fase 2 (monitoramento)** + início da **Fase 3A (storage + download pipeline)**.
+Base atual: **Fases 1–3K** (monitoramento → pipeline documental → validação → RAG → busca → RBAC → ops).
 
 ## Stack
+
 - Next.js + TypeScript (`apps/web`)
 - NestJS (`apps/api`)
 - PostgreSQL + Prisma (`packages/database`)
-- Redis + BullMQ
-- Worker Node/TypeScript (`services/worker`)
+- Redis + BullMQ (`services/worker`)
 - MinIO / S3-compatible storage
 
 ## Execução local
 
-1. Copie `.env.example` para `.env` e `apps/web/.env.local.example` para `apps/web/.env.local`.
-2. Suba a infraestrutura:
-   - com Docker: `docker compose up -d`
-   - ou Postgres + Redis + MinIO locais equivalentes ao `.env.example`
-3. Instale dependências: `pnpm install`
-4. Gere o client e sincronize o schema:
-   - `pnpm db:generate`
-   - `pnpm db:push`
-5. Seed opcional: `pnpm db:seed`
-6. API: `pnpm dev:api`
-7. Web: `pnpm dev:web`
-8. Worker: `pnpm dev:worker`
+1. Copie `.env.example` → `.env` e `apps/web/.env.local.example` → `apps/web/.env.local`.
+2. Infra: `docker compose up -d` (Postgres, Redis, MinIO).
+3. `pnpm install`
+4. `pnpm db:generate && pnpm db:push && pnpm db:seed`
+5. `pnpm dev:api` · `pnpm dev:web` · `pnpm dev:worker`
 
 ### Credenciais do seed
+
 - e-mail: `owner@demo.cct`
 - senha: `Demo@123456`
 
-## Documentação
-- `docs/CCT_INTELLIGENCE_DOCUMENTO_MESTRE_CURSOR.md` — documento mestre
-- `docs/BLUEPRINT.md`
-- `docs/PHASE_1.md` / `docs/PHASE_2.md` / `docs/PHASE_3.md`
-- `docs/AUDIT_PHASE2.md` — auditoria da base Phase 2
+## Qualidade
 
-## Fase 3A (esta entrega)
-- Object storage S3-compatible (MinIO)
-- Fila `document-download`
-- Validação MIME, SHA-256 do conteúdo, versionamento em `DocumentAsset`
-- Estados de processamento no `DiscoveredDocument`
-- API `/api/v1/documents` (listar, detalhar, enfileirar download, URL assinada)
-- UI de monitoramento com ações de download
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+## Documentação
+
+- `docs/CCT_INTELLIGENCE_DOCUMENTO_MESTRE_CURSOR.md` — especificação oficial
+- `docs/CURRENT_STATE.md` — estado real do código
+- `docs/ARCHITECTURE.md` · `docs/API.md` · `docs/SECURITY.md` · `docs/OPERATIONS.md` · `docs/ROADMAP.md` · `docs/PRODUCT.md`
+- `docs/PHASE_1.md` / `PHASE_2.md` / `PHASE_3.md`
+- `docs/AUDIT_PHASE2.md`
+- `docs/ADR/` — decisões arquiteturais
+
+## Deploy (preparação)
+
+Dockerfiles em `apps/api`, `apps/web`, `services/worker`. Compose cobre apenas infra de dependências.

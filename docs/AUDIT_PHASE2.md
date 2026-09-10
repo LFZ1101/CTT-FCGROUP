@@ -36,15 +36,22 @@ Auditoria da base `cct-intelligence-phase2.zip` antes da evolução para Fase 3.
 - Testes unitários básicos (MIME/scrape/hash).
 - README e docs de Fase 3 atualizados.
 
-## Dívida restante (priorizada)
-1. Extrair scraper compartilhado (`packages/shared`) e fazer API apenas enfileirar monitoramento.
-2. RolesGuard + matriz RBAC efetiva.
-3. Gravação sistemática de `AuditLog`.
-4. Login com `tenantSlug` ou e-mail global único.
-5. Validação cross-tenant de FKs em alerts/tasks/sources.
-6. Migrations Prisma versionadas (substituir `db push` em CI).
-7. Lint/ESLint + testes de integração multi-tenant.
-8. Extração de texto por página, classificação e cláusulas (Fase 3B+).
+## Dívida restante (priorizada) — atualizado 2026-09-10
+
+1. Extrair scraper compartilhado (`packages/shared`) e fazer API apenas enfileirar monitoramento. *(parcial: worker tem adaptador Mediador; API ainda tem check sync)*
+2. ~~RolesGuard + matriz RBAC efetiva.~~ **Feito** nos controllers principais (unit test do guard).
+3. ~~Gravação sistemática de `AuditLog`.~~ **Parcial** — validação, RAG, comparação, etc.
+4. Login com `tenantSlug` ou e-mail global único — **ainda aberto**.
+5. Validação cross-tenant de FKs em alerts/tasks/sources — **ainda aberto**.
+6. Migrations Prisma versionadas (substituir `db push` em CI) — **ainda aberto**.
+7. Lint/ESLint + testes de integração multi-tenant — **contratos unitários adicionados; E2E pendente**.
+8. ~~Extração de texto / classificação / cláusulas (Fase 3B+).~~ **Feito** (heurística v1).
+
+## Pós-auditoria (Fases 3A–3J + roadmap autônomo)
+
+- Storage, download, parse, classificação, cláusulas, promote, validação, compatibilidade, comparação, RAG, auditoria UI.
+- Busca documental, alertas de vigência, sync de tarefas de revisão, dashboard enriquecido, Dockerfiles, docs de ops/API/security.
+- Adaptador Mediador heurístico no worker.
 
 ## Riscos
 - Coletor HTML genérico falha em sites JS/CAPTCHA/anti-bot.

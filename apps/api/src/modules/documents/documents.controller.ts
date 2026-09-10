@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -14,6 +14,15 @@ export class DocumentsController {
   @Get()
   list(@CurrentUser() user: { tenantId: string }) {
     return this.service.list(user.tenantId);
+  }
+
+  @Get('search')
+  search(
+    @CurrentUser() user: { tenantId: string },
+    @Query('q') q = '',
+    @Query('limit') limit?: string,
+  ) {
+    return this.service.search(user.tenantId, q, limit ? Number(limit) : 40);
   }
 
   @Get(':id')
