@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Shell from '../../../components/Shell';
 import PageHeader from '../../../components/PageHeader';
+import AskPanel from '../../../components/AskPanel';
 import { api } from '../../../lib/api';
 
 type Page = { id: string; pageNumber: number; text: string; charCount: number };
@@ -132,6 +133,10 @@ export default function DocumentoPage() {
             </div>
             {doc.failureReason ? (
               <div className="empty" style={{ color: 'crimson' }}>{doc.failureReason}</div>
+            ) : null}
+
+            {(doc.clauses?.length || doc.pages?.length) ? (
+              <AskPanel documentId={doc.id} />
             ) : null}
 
             <section className="panel" style={{ marginBottom: 14 }}>

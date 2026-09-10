@@ -77,6 +77,7 @@ model Tenant {
   documentPages DocumentPage[]
   documentClauses DocumentClause[]
   instrumentComparisons InstrumentComparison[]
+  documentChunks DocumentChunk[]
 }
 
 model User {
@@ -192,6 +193,7 @@ model CollectiveInstrument {
   discoveredDocuments DiscoveredDocument[]
   comparisonsAsPrevious InstrumentComparison[] @relation("ComparisonPrevious")
   comparisonsAsCurrent  InstrumentComparison[] @relation("ComparisonCurrent")
+  chunks                DocumentChunk[]
 
   @@index([tenantId])
   @@index([registration])
@@ -253,6 +255,7 @@ model InstrumentClause {
   instrument   CollectiveInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
   previousInComparisons ClauseComparison[] @relation("ClauseComparisonPrevious")
   currentInComparisons  ClauseComparison[] @relation("ClauseComparisonCurrent")
+  chunks       DocumentChunk[]
 
   @@index([instrumentId])
 }
@@ -474,6 +477,7 @@ model DiscoveredDocument {
   assets      DocumentAsset[]
   pages       DocumentPage[]
   clauses     DocumentClause[]
+  chunks      DocumentChunk[]
 
   @@unique([sourceId, normalizedUrl])
   @@index([tenantId, status, firstSeenAt])
@@ -571,7 +575,39 @@ model DocumentClause {
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   discoveredDocument DiscoveredDocument @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+  chunks             DocumentChunk[]
 
   @@index([tenantId, discoveredDocumentId])
   @@index([tenantId, category])
+}
+
+/// Chunks de RAG (prioridade: cláusula). Embedding JSON opcional para futuro pgvector/OpenAI.
+model DocumentChunk {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  discoveredDocumentId String?
+  instrumentId         String?
+  documentClauseId     String?
+  instrumentClauseId   String?
+  pageStart            Int?
+  pageEnd              Int?
+  clauseNumber         String?
+  title                String?
+  category             String?
+  text                 String
+  metadata             Json?
+  embedding            Json?
+  modelVersion         String   @default("heuristic-v1")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  discoveredDocument DiscoveredDocument? @relation(fields: [discoveredDocumentId], references: [id], onDelete: Cascade)
+  instrument         CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  documentClause     DocumentClause?     @relation(fields: [documentClauseId], references: [id], onDelete: SetNull)
+  instrumentClause   InstrumentClause?   @relation(fields: [instrumentClauseId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, instrumentId])
+  @@index([tenantId, discoveredDocumentId])
+  @@index([tenantId, createdAt])
 }

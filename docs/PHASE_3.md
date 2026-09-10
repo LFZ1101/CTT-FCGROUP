@@ -94,8 +94,21 @@
 - Persistência de resumo agregado + `structuredDiff` por cláusula; audit/alert.
 - UI `/instrumentos/comparar` (filtros por tipo de mudança) e `/empresas/[id]` (CRUD de vínculos).
 
-## Próximo (3I+)
+## 3I — RAG com citação (entregue — heurística v1)
 
-- RAG com citação (somente após base documental estável)
-- Diff semântico com embeddings (opcional; v1 não depende)
+- Modelo `DocumentChunk` (cláusula-first; fallback por página; `embedding` JSON reservado).
+- Indexação automática no worker após parse/promote; reindex lazy na API.
+- Retrieval por Jaccard/cobertura de tokens (sem LLM obrigatório).
+- API:
+  - `POST /rag/ask` `{ question, documentId | instrumentId, topK? }`
+  - `POST /rag/reindex` `{ documentId?, instrumentId? }`
+- Recusa sem evidência: “Não encontrei evidência suficiente…”.
+- UI `AskPanel` em `/documentos/[id]` e `/instrumentos/[id]` com fontes (cláusula/página/score).
+- Auditoria `RAG_ASK`.
+
+## Próximo (3J+)
+
+- Embeddings + pgvector (busca semântica)
+- Provider OpenAI opcional para síntese (`OPENAI_API_KEY`)
 - RolesGuard fino e trilha de auditoria completa na UI documental
+- Diff semântico entre versões

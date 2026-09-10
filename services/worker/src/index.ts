@@ -23,6 +23,7 @@ import { classifyDocument } from './classify.js';
 import { segmentClauses } from './segment.js';
 import { extractMetadata } from './metadata.js';
 import { promoteToInstrument } from './promote.js';
+import { indexChunksForDocument, indexChunksForInstrument } from './chunks.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -431,6 +432,15 @@ async function parseDocument(documentId: string, tenantId: string) {
       clauses,
       existingInstrumentId: doc.instrumentId,
     });
+
+    await indexChunksForDocument(prisma, {
+      tenantId,
+      documentId: doc.id,
+      instrumentId,
+    });
+    if (instrumentId) {
+      await indexChunksForInstrument(prisma, { tenantId, instrumentId });
+    }
 
     await prisma.alert.create({
       data: {
