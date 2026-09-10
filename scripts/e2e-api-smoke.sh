@@ -11,15 +11,21 @@ export PORT="${E2E_PORT:-4010}"
 pnpm --filter @cct/api build
 node apps/api/dist/main.js &
 PID=$!
-cleanup() { kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; }
+cleanup() { kill "$PID" 2>/dev/null || true; sleep 0.2; kill -9 "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; }
 trap cleanup EXIT
 
+READY=0
 for i in $(seq 1 60); do
   if curl -sf "http://127.0.0.1:${PORT}/health" >/dev/null; then
+    READY=1
     break
   fi
   sleep 0.25
 done
+if [[ "$READY" -ne 1 ]]; then
+  echo "e2e: API não ficou pronta em :${PORT}" >&2
+  exit 1
+fi
 
 EMAIL="e2e-$(date +%s)@test.cct"
 PASS='Temp@123456'

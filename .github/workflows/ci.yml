@@ -5,9 +5,14 @@ on:
     branches: ['**']
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -35,6 +40,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public
       REDIS_URL: redis://localhost:6379
+      # Gate Mediador Redis é opt-in; desligado no CI para não prender handles nos testes
+      MEDIADOR_GATE_REDIS: 'false'
       JWT_SECRET: ci-test-secret
       STORAGE_BUCKET: cct-documents
       STORAGE_ENDPOINT: http://127.0.0.1:9000
@@ -54,13 +61,21 @@ jobs:
       - run: pnpm install
       - run: pnpm db:generate
       - run: pnpm --filter @cct/database exec prisma migrate deploy
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+      - name: Typecheck
+        timeout-minutes: 5
+        run: pnpm typecheck
+      - name: Unit / integration tests
+        timeout-minutes: 8
+        run: pnpm test
+      - name: Build
+        timeout-minutes: 8
+        run: pnpm build
       - name: E2E API smoke
+        timeout-minutes: 5
         run: bash scripts/e2e-api-smoke.sh
         env:
           E2E_PORT: 4010
           JWT_SECRET: ci-test-secret
           DATABASE_URL: postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public
           REDIS_URL: redis://localhost:6379
+          MEDIADOR_GATE_REDIS: 'false'
