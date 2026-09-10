@@ -1,6 +1,7 @@
 /**
  * Gate de politeness + circuit breaker para o portal Mediador.
- * Memória local + Redis opcional (REDIS_URL) para compartilhar entre workers.
+ * Memória local + Redis opcional (MEDIADOR_GATE_REDIS=true + REDIS_URL).
+ * Opt-in explícito evita hang em testes/CI quando REDIS_URL só serve BullMQ.
  */
 
 import { Redis } from 'ioredis';
@@ -14,10 +15,15 @@ type GateState = {
 const gates = new Map<string, GateState>();
 let redis: Redis | null | undefined;
 
+function isGateRedisEnabled() {
+  const v = (process.env.MEDIADOR_GATE_REDIS || '').toLowerCase();
+  return v === 'true' || v === '1';
+}
+
 function getRedis(): Redis | null {
   if (redis !== undefined) return redis;
   const url = process.env.REDIS_URL;
-  if (!url || process.env.MEDIADOR_GATE_REDIS === 'false') {
+  if (!url || !isGateRedisEnabled()) {
     redis = null;
     return null;
   }
@@ -62,6 +68,7 @@ function stateFor(url: string): GateState {
 
 export function resetMediadorGates() {
   gates.clear();
+  void closeMediadorGateRedis();
 }
 
 export function getMediadorGateSnapshot(url: string) {

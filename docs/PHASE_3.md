@@ -203,7 +203,7 @@
 
 - HTTP stealth (cookies/referer/Sec-Fetch)
 - Playwright opcional (`MEDIADOR_BROWSER`) sem dependência fixa
-- Gate Mediador com Redis compartilhado; ADR 0010
+- Gate Mediador com Redis compartilhado (opt-in `MEDIADOR_GATE_REDIS`); ADR 0010
 - E2E smoke com isolamento cross-tenant
 
 ## Próximo (opcional / fora do núcleo)

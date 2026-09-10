@@ -10,7 +10,7 @@ ainda assim o worker precisa de caminhos controlados para staging e fontes menos
 1. HTTP “stealth”: cookies de sessão, referer, Sec-Fetch-* e UA de browser.
 2. Playwright opcional via `MEDIADOR_BROWSER=true` (dependência não fixa; `playwright_unavailable` se ausente).
 3. Fixture (`MEDIADOR_MODE=fixture`) permanece para CI/offline.
-4. Gate de politeness + circuit breaker; estado compartilhado via Redis quando disponível (ADR 0010+gate).
+4. Gate de politeness + circuit breaker; Redis compartilhado só com `MEDIADOR_GATE_REDIS=true` (opt-in, evita hang em testes).
 5. Captcha continua virando `BLOCKED` — sem contornar desafio.
 
 ## Consequências
