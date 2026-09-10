@@ -15,6 +15,8 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { ComparisonsModule } from './modules/comparisons/comparisons.module';
 import { RagModule } from './modules/rag/rag.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { AuditModule } from './modules/audit/audit.module';
     ComparisonsModule,
     RagModule,
     AuditModule,
+    PayrollModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })

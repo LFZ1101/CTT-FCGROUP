@@ -52,6 +52,9 @@ importers:
       ioredis:
         specifier: ^5.4.1
         version: 5.11.1
+      nodemailer:
+        specifier: ^10.0.3
+        version: 10.0.3
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -74,6 +77,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.2
+      '@types/nodemailer':
+        specifier: ^8.0.1
+        version: 8.0.1
       tsx:
         specifier: ^4.19.0
         version: 4.23.13
@@ -1073,6 +1079,9 @@ packages:
   '@types/node@22.20.2':
     resolution: {integrity: sha512-xlvWf4Vs9n1PEVYwP1n4vvG07M6y8WgvJ2t0vbrWTmijsIHp1cS+uJ2kMIRdY3nHZK0nCYKrPeD171+SzF4/zw==}
 
+  '@types/nodemailer@8.0.1':
+    resolution: {integrity: sha512-PxpaInm8V1JQDd4j0ds5HfvWQk8JupS1C0Picb96QJsrrRDjBH+DlK7L4ZdNSqNULhiZRQHc40nLVShaGxXAMw==}
+
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
 
@@ -1932,6 +1941,10 @@ packages:
   node-releases@2.0.55:
     resolution: {integrity: sha512-mIrE/Cw9y+9Au6dS5vDKDhQza9YvG6w+ZrS6X+ZzA7yFW/soAeaups4Qzn1bL6g5FVy8WtP79+0j82oPIbqRjQ==}
     engines: {node: '>=18'}
+
+  nodemailer@10.0.3:
+    resolution: {integrity: sha512-h5c8ypcMoOIh44bIcVROvTDbjRdOJX8AXTkxMht2C92HlSjkG+/8kjoqmNPypfjQaVNaUHWyZ3tqs5I3K91F3g==}
+    engines: {node: '>=20.0.0'}
 
   nypm@0.6.10:
     resolution: {integrity: sha512-W72Hrj1petq+b3Hk2aAC+9zswetlIFTnDW4s5djseZh2nYqBbyQLOtj472HwcbcWykPBUW1WpWpjOd4nK6gMRw==}
@@ -3334,6 +3347,10 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/nodemailer@8.0.1':
+    dependencies:
+      '@types/node': 22.20.2
+
   '@types/react@19.3.0':
     dependencies:
       csstype: 3.2.3
@@ -4233,6 +4250,8 @@ snapshots:
     optional: true
 
   node-releases@2.0.55: {}
+
+  nodemailer@10.0.3: {}
 
   nypm@0.6.10:
     dependencies:
