@@ -133,45 +133,57 @@ export default function Alertas() {
           description="WARNING/CRITICAL disparam canais conforme suas preferências (e-mail, webhook, Web Push)."
           action={
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="secondary" disabled={pushBusy} onClick={() => void enablePush()}>
+              <button
+                className="secondary"
+                type="button"
+                disabled={pushBusy}
+                aria-busy={pushBusy}
+                onClick={() => void enablePush()}
+              >
                 {pushBusy ? 'Ativando…' : 'Ativar Web Push'}
               </button>
-              <button className="primary" onClick={() => void scanExpiring()}>
+              <button className="primary" type="button" onClick={() => void scanExpiring()}>
                 Verificar vigências
               </button>
             </div>
           }
         />
-        {msg ? <p className="feedmeta" style={{ marginBottom: 12 }}>{msg}</p> : null}
+        <p className="feedmeta" style={{ marginBottom: 12, minHeight: 14 }} role="status" aria-live="polite">
+          {msg || '\u00a0'}
+        </p>
 
         {prefs ? (
-          <section className="panel" style={{ marginBottom: 14 }}>
+          <section className="panel" style={{ marginBottom: 14 }} aria-labelledby="alert-prefs-title">
             <div className="panelhead">
               <div>
                 <span className="eyebrow">PREFERÊNCIAS</span>
-                <h2>Notificações do seu usuário</h2>
+                <h2 id="alert-prefs-title">Notificações do seu usuário</h2>
               </div>
             </div>
             <form onSubmit={savePrefs} style={{ padding: 14, display: 'grid', gap: 10, maxWidth: 520 }}>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  checked={prefs.emailEnabled}
-                  onChange={(e) => setPrefs({ ...prefs, emailEnabled: e.target.checked })}
-                />
-                E-mail
-              </label>
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  checked={prefs.pushEnabled}
-                  onChange={(e) => setPrefs({ ...prefs, pushEnabled: e.target.checked })}
-                />
-                Web Push
-              </label>
+              <fieldset style={{ border: 0, margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+                <legend className="sr-only">Canais de notificação</legend>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={prefs.emailEnabled}
+                    onChange={(e) => setPrefs({ ...prefs, emailEnabled: e.target.checked })}
+                  />
+                  E-mail
+                </label>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={prefs.pushEnabled}
+                    onChange={(e) => setPrefs({ ...prefs, pushEnabled: e.target.checked })}
+                  />
+                  Web Push
+                </label>
+              </fieldset>
               <div className="field">
-                <label>Severidade mínima</label>
+                <label htmlFor="alert-min-severity">Severidade mínima</label>
                 <select
+                  id="alert-min-severity"
                   value={prefs.minSeverity}
                   onChange={(e) => setPrefs({ ...prefs, minSeverity: e.target.value })}
                 >
@@ -181,8 +193,9 @@ export default function Alertas() {
                 </select>
               </div>
               <div className="field">
-                <label>Tipos silenciados (CSV)</label>
+                <label htmlFor="alert-muted-types">Tipos silenciados (CSV)</label>
                 <input
+                  id="alert-muted-types"
                   value={prefs.mutedTypes.join(', ')}
                   onChange={(e) =>
                     setPrefs({
@@ -196,7 +209,7 @@ export default function Alertas() {
                   placeholder="ex.: INSTRUMENT_EXPIRING"
                 />
               </div>
-              <button className="secondary" disabled={prefsBusy}>
+              <button className="secondary" type="submit" disabled={prefsBusy} aria-busy={prefsBusy}>
                 {prefsBusy ? 'Salvando…' : 'Salvar preferências'}
               </button>
             </form>

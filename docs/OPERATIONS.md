@@ -63,8 +63,9 @@ Worker consome `source-monitoring`, `document-download`, `document-parse`. Inter
 ## Webhooks / Mediador
 
 - `NOTIFY_WEBHOOK_URL` (+ `NOTIFY_WEBHOOK_SECRET` → header `X-CCT-Signature`)
-- Gate: `MEDIADOR_MIN_INTERVAL_MS`, `MEDIADOR_BLOCK_THRESHOLD`, `MEDIADOR_COOLDOWN_MS`
+- Gate: `MEDIADOR_MIN_INTERVAL_MS`, `MEDIADOR_BLOCK_THRESHOLD`, `MEDIADOR_COOLDOWN_MS` (Redis se `REDIS_URL`)
 - Staging offline: `MEDIADOR_MODE=fixture`
+- Browser opcional: `MEDIADOR_BROWSER=true` + `pnpm add playwright` no worker + `npx playwright install chromium`
 
 ## Web Push
 

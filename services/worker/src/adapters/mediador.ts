@@ -1,12 +1,15 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { detectMediadorBlock, isMediadorUrl } from './mediador-detect.js';
+import { fetchMediadorWithBrowser } from './mediador-browser.js';
+
+export { detectMediadorBlock, isMediadorUrl } from './mediador-detect.js';
 
 /**
  * Cliente/adaptador Mediador (MTE).
  *
- * Integração real = HTTP + parsing de HTML/consulta pública.
- * Limitações conhecidas (anti-bot/JS/CAPTCHA) são tratadas com status explícito,
- * sem inventar documentos.
+ * Integração real = HTTP stealth + parsing; Playwright opcional (MEDIADOR_BROWSER).
+ * Limitações conhecidas (CAPTCHA) → status BLOCKED explícito.
  * MEDIADOR_MODE=fixture usa HTML local (staging offline).
  */
 
@@ -27,16 +30,44 @@ export type MediadorFetchResult = {
   reason?: string;
 };
 
-const MEDIADOR_HOST = /(mediador\.mte\.gov\.br|www\.mediador\.mte\.gov\.br)/i;
 const DEFAULT_UA =
-  'CCT-Intelligence-Mediador/1.0 (+compliance; research; contact-admin@local)';
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-export function isMediadorUrl(url: string): boolean {
+/** Cookie jar simples por host para sessão HTTP stealth. */
+const cookieJar = new Map<string, string>();
+const lastUrlByHost = new Map<string, string>();
+
+function hostOf(url: string) {
   try {
-    return MEDIADOR_HOST.test(new URL(url).hostname);
+    return new URL(url).host;
   } catch {
-    return false;
+    return '';
   }
+}
+
+function rememberCookies(url: string, response: Response) {
+  const host = hostOf(url);
+  if (!host) return;
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  const raw = headers.getSetCookie?.() || [];
+  const fallback = response.headers.get('set-cookie');
+  const parts = raw.length ? raw : fallback ? [fallback] : [];
+  if (!parts.length) return;
+  const existing = cookieJar.get(host) || '';
+  const jar = new Map<string, string>();
+  for (const piece of existing.split(';').map((s) => s.trim()).filter(Boolean)) {
+    const [k, ...rest] = piece.split('=');
+    if (k) jar.set(k, rest.join('='));
+  }
+  for (const set of parts) {
+    const first = set.split(';')[0];
+    const [k, ...rest] = first.split('=');
+    if (k) jar.set(k.trim(), rest.join('=').trim());
+  }
+  cookieJar.set(
+    host,
+    [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; '),
+  );
 }
 
 /** Monta URL de consulta pública por número de registro / NRReq quando possível. */
@@ -52,22 +83,6 @@ export function buildMediadorConsultationUrl(params: {
   if (params.registro) u.searchParams.set('registro', params.registro);
   if (params.nrReq) u.searchParams.set('nrReq', params.nrReq);
   return u.toString();
-}
-
-export function detectMediadorBlock(html: string, status: number): {
-  blocked: boolean;
-  reason?: string;
-} {
-  if (status === 403 || status === 429) {
-    return { blocked: true, reason: `HTTP ${status}` };
-  }
-  if (/captcha|cloudflare|access denied|desafio|verifica(ç|c)ão/i.test(html)) {
-    return { blocked: true, reason: 'challenge_or_captcha' };
-  }
-  if (/enable javascript|javascript.*?required/i.test(html) && html.length < 2500) {
-    return { blocked: true, reason: 'javascript_shell' };
-  }
-  return { blocked: false };
 }
 
 async function loadMediadorFixture(url: string): Promise<MediadorFetchResult | null> {
@@ -108,6 +123,9 @@ export async function fetchMediadorPage(
   const fixture = await loadMediadorFixture(url);
   if (fixture) return fixture;
 
+  const browserResult = await fetchMediadorWithBrowser(url, init);
+  if (browserResult) return browserResult;
+
   const attempts = Math.max(1, init?.attempts ?? Number(process.env.MEDIADOR_MAX_ATTEMPTS || 3));
   const baseDelay = Math.max(100, Number(process.env.MEDIADOR_RETRY_MS || 800));
   let last: MediadorFetchResult | null = null;
@@ -133,18 +151,35 @@ async function fetchMediadorPageOnce(
   init?: { timeoutMs?: number; userAgent?: string },
 ): Promise<MediadorFetchResult> {
   const timeoutMs = init?.timeoutMs ?? Number(process.env.MEDIADOR_TIMEOUT_MS || 20_000);
+  const host = hostOf(url);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const headers: Record<string, string> = {
+      'user-agent': init?.userAgent || process.env.MEDIADOR_UA || DEFAULT_UA,
+      accept:
+        'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+      'cache-control': 'no-cache',
+      pragma: 'no-cache',
+      'upgrade-insecure-requests': '1',
+      'sec-fetch-dest': 'document',
+      'sec-fetch-mode': 'navigate',
+      'sec-fetch-site': lastUrlByHost.has(host) ? 'same-origin' : 'none',
+      'sec-fetch-user': '?1',
+    };
+    const cookie = cookieJar.get(host);
+    if (cookie) headers.cookie = cookie;
+    const referer = lastUrlByHost.get(host);
+    if (referer) headers.referer = referer;
+
     const response = await fetch(url, {
       redirect: 'follow',
       signal: controller.signal,
-      headers: {
-        'user-agent': init?.userAgent || process.env.MEDIADOR_UA || DEFAULT_UA,
-        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8',
-      },
+      headers,
     });
+    rememberCookies(url, response);
+    lastUrlByHost.set(host, response.url || url);
     const html = await response.text();
     const block = detectMediadorBlock(html, response.status);
     return {
@@ -153,7 +188,7 @@ async function fetchMediadorPageOnce(
       finalUrl: response.url || url,
       html,
       blocked: block.blocked,
-      reason: block.reason,
+      reason: block.reason || (response.ok ? 'stealth_http' : undefined),
     };
   } catch (error: any) {
     return {

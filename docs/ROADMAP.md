@@ -22,14 +22,16 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 15 | RAG / IA documental | DONE_NEEDS_TESTS (híbrido + pgvector opcional) |
 | 16 | Busca documental | DONE_NEEDS_TESTS |
 | 17 | Dashboard enriquecido | DONE_NEEDS_TESTS |
-| 18 | UX/UI polish | PARTIAL (painel folha no comparador) |
+| 18 | UX/UI polish | PARTIAL (comparador folha + a11y leve em /alertas) |
 | 19 | Observabilidade | DONE_NEEDS_TESTS (health + metrics + requestId + Sentry + OTel lite) |
 | 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + Redis RL + tenantSlug + FK) |
 | 21 | Testes completos | PARTIAL → integration multi-tenant feito |
 | 22 | Documentação | DONE_NEEDS_TESTS |
 | 23 | Preparação deploy | DONE_NEEDS_TESTS (Dockerfiles + CI + migrate) |
 
-## Próximos (não bloqueantes)
+## Próximos (não bloqueantes / polish)
 
-- Mediador anti-bot avançado (automação controlada)
 - OTel SDK completo / auto-instrumentation
+- Build/push de imagens em registry
+- Auditoria a11y formal (axe) em todas as rotas
+- Imagem worker Debian com Playwright pré-instalado (quando política permitir)

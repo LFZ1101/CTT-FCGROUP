@@ -199,7 +199,16 @@
 - `traceparent` W3C + spans HTTP + export OTLP JSON opcional
 - Health `otel` snapshot; ADR 0009
 
-## Próximo
+## 3V — Mediador anti-bot + gate Redis (entregue)
 
-- Mediador anti-bot avançado (browser automation controlada)
-- OTel SDK completo / auto-instrumentation (opcional)
+- HTTP stealth (cookies/referer/Sec-Fetch)
+- Playwright opcional (`MEDIADOR_BROWSER`) sem dependência fixa
+- Gate Mediador com Redis compartilhado; ADR 0010
+- E2E smoke com isolamento cross-tenant
+
+## Próximo (opcional / fora do núcleo)
+
+- OTel SDK completo / auto-instrumentation
+- Build/push de imagens em registry
+- Auditoria a11y formal (axe) — /alertas já tem live region + labels
+- Imagem worker Debian com Playwright pré-instalado

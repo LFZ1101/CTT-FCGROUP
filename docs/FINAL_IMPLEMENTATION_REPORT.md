@@ -73,6 +73,8 @@
 24. Web Push VAPID (subscribe + fan-out); ADR 0007
 25. Preferências de notificação por usuário; ADR 0008
 26. OpenTelemetry lite (traceparent + OTLP JSON); ADR 0009
+27. Mediador stealth/browser opcional + gate Redis + e2e isolation; ADR 0010
+28. A11y leve em `/alertas` (live region, labels, reduced-motion) + notas Playwright no Dockerfile worker
 
 ## Arquitetura final
 
@@ -119,15 +121,13 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvect
 
 ## O QUE AINDA NÃO ESTÁ 100% PRONTO
 
-- E2E HTTP com JWT cross-tenant completo (há integration Prisma + smoke login)
-- Rate limit compartilhado via Redis em cluster
-- Mediador contra portal real (JS/CAPTCHA) — adaptador trata BLOCKED
+- Rate limit / gate Mediador em multi-região (há Redis por ambiente)
+- Mediador CAPTCHA real (browser opcional; BLOCKED sem contornar)
 - pgvector em volumes Postgres antigos sem a extensão (recriar via compose)
-- OCR para PDFs escaneados
+- OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
 - Build/push de imagens Docker em registry
 - UX polish / acessibilidade formal
 - OTel SDK completo / auto-instrumentation (há tracer lite + OTLP)
-- OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
 
 ## Riscos
 
@@ -158,5 +158,6 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Próximos passos
 
-1. Mediador anti-bot avançado
+1. Validar Mediador+Playwright em staging com fonte real (política/legal)
 2. OTel SDK completo (opcional)
+3. Publicar imagens no registry

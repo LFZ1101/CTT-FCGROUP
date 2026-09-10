@@ -2,7 +2,7 @@
 
 Plataforma SaaS de inteligência trabalhista para escritórios contábeis.
 
-Base atual: **Fases 1–3U** (pipeline → prefs → OpenTelemetry lite).
+Base atual: **Fases 1–3V** (roadmap autônomo de inteligência documental + ops).
 
 ## Stack
 

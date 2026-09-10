@@ -3,19 +3,21 @@
 **Data:** 2026-09-10  
 **Branch:** `cursor/cct-intelligence-autonomous-roadmap-310a`
 
-## Prioridades
+## Roadmap autônomo (3K–3V)
 
 | Etapa | Status |
 |---|---|
-| Pipeline 3A–3J + RBAC/CI/isolamento | DONE |
-| Mediador HTTP + retry + gate/fixture | DONE |
-| Folha / e-mail / webhook / Web Push / prefs | DONE |
+| Isolamento / CI / migrations / review | DONE |
+| Mediador HTTP + retry + gate + stealth + browser opt | DONE |
+| pgvector / RAG / folha / e-mail / webhook / push / prefs | DONE |
 | Auth tenantSlug + Redis RL | DONE |
 | OCR opt-in | DONE |
-| Observabilidade (requestId/metrics/Sentry/OTel lite) | DONE |
+| Observabilidade (metrics/Sentry/OTel lite) | DONE |
+| E2E smoke (login slug + isolation + otel headers) | DONE |
 
-## Limitações
+## Limitações remanescentes
 
-- Mediador: CAPTCHA/JS ainda bloqueiam.
-- OTel lite ≠ SDK completo (sem auto-instrumentation).
-- Push exige HTTPS/localhost + `VAPID_*`.
+- CAPTCHA real no Mediador ainda exige intervenção humana / Playwright em staging (Alpine não embute browsers).
+- OTel lite ≠ SDK completo.
+- Push/SMTP/OCR/browser só com env/binários.
+- Registry Docker e auditoria a11y formal (axe) fora do escopo atual.
