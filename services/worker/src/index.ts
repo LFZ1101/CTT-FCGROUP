@@ -34,6 +34,7 @@ import { extractMetadata } from './metadata.js';
 import { promoteToInstrument } from './promote.js';
 import { indexChunksForDocument, indexChunksForInstrument } from './chunks.js';
 import { workerLog } from './log.js';
+import { matchCollaborativeOfficialByHash } from './match-collaborative.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -261,6 +262,19 @@ async function finishStored(docId: string, tenantId: string, data: Record<string
       failureReason: null,
     },
   });
+  const hash = typeof data.contentHash === 'string' ? data.contentHash : null;
+  try {
+    await matchCollaborativeOfficialByHash(prisma, {
+      tenantId,
+      documentId: docId,
+      contentHash: hash,
+    });
+  } catch (err) {
+    workerLog('warn', 'match colaborativo oficial falhou', {
+      documentId: docId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
   await enqueueParse(docId, tenantId);
 }
 

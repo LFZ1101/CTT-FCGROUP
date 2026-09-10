@@ -276,6 +276,7 @@ export class DocumentsService implements OnModuleDestroy {
           needsReview: true,
           pageCount: true,
           firstSeenAt: true,
+          source: { select: { type: true, name: true } },
         },
         take,
         orderBy: { firstSeenAt: 'desc' },
@@ -349,11 +350,25 @@ export class DocumentsService implements OnModuleDestroy {
     return {
       query: q,
       documents: documents
-        .map((d) => ({
-          ...d,
-          score: Math.max(0.5, score(d.title, 5) + score(d.url, 1)),
-          snippet: d.title || d.url,
-        }))
+        .map((d) => {
+          const sourceType = d.source?.type || null;
+          const originBadge =
+            sourceType === 'MEDIADOR_MTE'
+              ? 'OFICIAL'
+              : sourceType === 'LABOR_UNION' || sourceType === 'EMPLOYER_UNION'
+                ? 'SINDICATO'
+                : sourceType === 'COLLABORATIVE_NETWORK'
+                  ? 'COLABORATIVO'
+                  : sourceType === 'MANUAL_UPLOAD'
+                    ? 'PRIVADO'
+                    : null;
+          return {
+            ...d,
+            originBadge,
+            score: Math.max(0.5, score(d.title, 5) + score(d.url, 1)),
+            snippet: d.title || d.url,
+          };
+        })
         .sort((a, b) => b.score - a.score),
       clauses: clauses
         .map((c) => ({

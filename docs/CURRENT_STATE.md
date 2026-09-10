@@ -1,12 +1,12 @@
 # Estado atual — CCT Intelligence
 
 **Data:** 2026-09-10  
-**Branch ativa:** `cursor/cct-intelligence-feedback-p0-310a`  
-**Base preservada:** fases 3A–3V + roadmap autônomo
+**Branch ativa:** `cursor/cct-intelligence-collaborative-network-310a`  
+**Base preservada:** fases 3A–3V + feedback P0 + Base Colaborativa
 
 ## Promessa de valor (pós-feedback)
 
-Reduzir a chance de uma alteração trabalhista passar despercebida.
+Reduzir a chance de uma alteração trabalhista passar despercebida — inclusive quando a CCT ainda não está no Mediador/site oficial (via Base Colaborativa moderada).
 
 ## Classificação dos módulos (pós-auditoria)
 
@@ -17,42 +17,43 @@ Reduzir a chance de uma alteração trabalhista passar despercebida.
 | CompanyUnion | PARTIAL→estendido | status/confidence/validação |
 | Sources + monitoring | DONE_NEEDS_TESTS | Preservado |
 | Mediador adapter | DONE_NEEDS_TESTS | Preservado (CAPTCHA = BLOCKED) |
-| Pipeline documental | DONE_NEEDS_TESTS | Preservado |
-| Alerts | DONE_NEEDS_TESTS | + SOURCE_DIVERGENCE / CRITICAL_DEADLINE |
+| Pipeline documental | DONE_NEEDS_TESTS | Preservado; reutilizado pela rede |
+| Alerts | DONE_NEEDS_TESTS | + tipos colaborativos |
 | Compatibility | DONE_NEEDS_TESTS | Preservado |
-| Comparison / payroll | DONE_NEEDS_TESTS | UX secundária (“principais mudanças”) |
-| RAG ask | DONE_NEEDS_TESTS | Preservado (evidência) |
-| Dashboard | DONE_NEEDS_TESTS | Reorientado para “Hoje” |
-| Matching assistido | DONE_NEEDS_TESTS | Novo P0 |
-| Vigilância / cobertura | DONE_NEEDS_TESTS | Novo P0 |
-| Deadlines | DONE_NEEDS_TESTS | Novo P0 |
-| Resumo operacional | DONE_NEEDS_TESTS | Novo P0 |
+| Comparison / payroll | DONE_NEEDS_TESTS | UX secundária |
+| RAG ask | DONE_NEEDS_TESTS | + disclaimer de origem colaborativa |
+| Dashboard | DONE_NEEDS_TESTS | Métricas leves da rede |
+| Matching assistido | DONE_NEEDS_TESTS | P0 |
+| Vigilância / cobertura | DONE_NEEDS_TESTS | + overlay colaborativo |
+| Deadlines | DONE_NEEDS_TESTS | P0 |
+| **Base Colaborativa** | **DONE_NEEDS_TESTS** | Contribuição, publicação, pedidos, match hash |
 | Import vínculos CSV | NOT_STARTED | Próximo |
 | Funcionários/folha oficial | NOT_STARTED | P2 |
 
-## Endpoints novos (P0)
+## Endpoints novos (colaborativo)
 
-- `GET /companies/:id/union-suggestions`
-- `POST /companies/:id/union-suggestions/persist`
-- `POST /company-unions/:linkId/decide`
-- `GET /surveillance`
-- `POST /surveillance/scan-divergences`
-- `GET /deadlines`
-- `POST /instruments/:id/extract-deadlines`
-- `POST /deadlines/scan-alerts`
-- `GET /instruments/:id/impacted-companies`
-- `GET /instruments/:id/operational-summary`
+- `GET /collaborative/overview`
+- `POST /collaborative/contributions`
+- `GET /collaborative/network` + `.../access`
+- `GET /collaborative/moderation/pending` + moderate/revoke
+- `POST /collaborative/requests` + groups/cancel
+- `GET /collaborative/surveillance-overlay`
+- `POST /collaborative/match-official/:documentId`
 
 ## UI nova
 
-- `/vigilancia`
-- `/prazos`
-- `/sindicatos/[id]`
-- Home acionável; empresa com sugestões; instrumento com resumo/impacto
+- `/rede`, `/rede/enviar`, `/rede/moderacao`, `/rede/solicitar`
+- Vigilância: Mediador × site × colaborativa
+- Nav: Rede Colaborativa
+
+## Isolamento
+
+Documentos privados permanecem `tenantId`-scoped. Rede só via `CollaborativePublication` + elegibilidade (`NETWORK_RELATED_UNION` por `unionMatchKey`).
 
 ## Limitações
 
-- Matching e prazos são heurísticos (exigem revisão humana).
-- Divergência Mediador×sindicato é heurística por título/hash.
-- Import CSV de vínculos ainda não implementado.
+- Moderação fase 1: OWNER/ADMIN do tenant remetente (papel MODERATOR global futuro).
+- Match oficial: hash SHA-256 (metadados/similaridade = próximo).
+- RAG de publicação cross-tenant: consumidor usa download assinado; chunks RAG no tenant do documento.
+- Matching e prazos continuam heurísticos.
 - pgvector local pode falhar sem imagem `pgvector` (CI usa imagem correta).

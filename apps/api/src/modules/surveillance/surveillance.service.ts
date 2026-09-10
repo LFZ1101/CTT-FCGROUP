@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { classifySourceHealth, computePortfolioCoverage } from './coverage';
+import { CollaborativeService } from '../collaborative/collaborative.service';
 
 @Injectable()
 export class SurveillanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly collaborative: CollaborativeService,
+  ) {}
 
   async overview(tenantId: string) {
-    const [companies, sources, unions, mediador] = await Promise.all([
+    const [companies, sources, unions, mediador, collaborativeOverlay] = await Promise.all([
       this.prisma.company.findMany({
         where: { tenantId, active: true },
         include: {
@@ -44,6 +48,7 @@ export class SurveillanceService {
         where: { tenantId, type: 'MEDIADOR_MTE' },
         include: { checks: { orderBy: { startedAt: 'desc' }, take: 1 } },
       }),
+      this.collaborative.surveillanceOverlay(tenantId),
     ]);
 
     const coverage = computePortfolioCoverage(companies as any);
@@ -74,6 +79,13 @@ export class SurveillanceService {
     const unionsWithoutSource = unions.filter((u) => !u.sources.some((s) => s.enabled)).length;
     const failing = sourceRows.filter((s) => s.health === 'FAILURE' || s.health === 'STALE').length;
 
+    const collabByUnion = new Map<string, (typeof collaborativeOverlay)[number][]>();
+    for (const row of collaborativeOverlay) {
+      const list = collabByUnion.get(row.unionId) || [];
+      list.push(row);
+      collabByUnion.set(row.unionId, list);
+    }
+
     return {
       coverage,
       metrics: {
@@ -95,16 +107,49 @@ export class SurveillanceService {
               recentCheckStatus: mediador.checks[0]?.status || null,
             })
           : 'STALE',
+        collaborativeAvailable: collaborativeOverlay.length,
+        collaborativeUnconfirmed: collaborativeOverlay.filter((c) => !c.officialConfirmed).length,
       },
       sources: sourceRows,
-      unions: unions.map((u) => ({
-        id: u.id,
-        name: u.name,
-        acronym: u.acronym,
-        companiesLinked: u._count.companies,
-        sourcesCount: u._count.sources,
-        hasEnabledSource: u.sources.some((s) => s.enabled),
-      })),
+      collaborative: collaborativeOverlay,
+      unions: unions.map((u) => {
+        const collab = collabByUnion.get(u.id) || [];
+        const mediadorOk = sourceRows.some(
+          (s) => s.unionId === u.id && s.type === 'MEDIADOR_MTE' && s.health === 'OK',
+        );
+        const unionSiteOk = sourceRows.some(
+          (s) =>
+            s.unionId === u.id &&
+            (s.type === 'LABOR_UNION' || s.type === 'EMPLOYER_UNION') &&
+            s.health === 'OK',
+        );
+        let overallStatus = 'OK';
+        let overallNote = 'Cobertura habitual';
+        if (!mediadorOk && !unionSiteOk && collab.length) {
+          overallStatus = 'ATENÇÃO';
+          overallNote = 'Documento disponível apenas por fonte colaborativa';
+        } else if (!mediadorOk && collab.some((c) => !c.officialConfirmed)) {
+          overallStatus = 'ATENÇÃO';
+          overallNote = 'Há contribuição colaborativa ainda sem confirmação oficial';
+        }
+        return {
+          id: u.id,
+          name: u.name,
+          acronym: u.acronym,
+          companiesLinked: u._count.companies,
+          sourcesCount: u._count.sources,
+          hasEnabledSource: u.sources.some((s) => s.enabled),
+          mediador: mediadorOk ? 'localizado' : 'não localizado',
+          unionSite: unionSiteOk ? 'localizado' : 'não localizado',
+          collaborative: collab.length
+            ? collab.some((c) => c.officialConfirmed)
+              ? 'confirmado em fonte oficial'
+              : 'documento disponível'
+            : 'não localizado',
+          overallStatus,
+          overallNote,
+        };
+      }),
     };
   }
 

@@ -30,6 +30,11 @@ Fluxo de valor: fontes dispersas → documentos → informação estruturada →
 2. Vínculo sindical assistido
 3. Novos instrumentos + alertas
 4. Prazos críticos
-5. Resumo operacional + IA com evidência
-6. Empresas impactadas
-7. Comparação detalhada (secundária)
+5. **Base / Rede Colaborativa de CCTs** (descoberta precoce com moderação)
+6. Resumo operacional + IA com evidência
+7. Empresas impactadas
+8. Comparação detalhada (secundária)
+
+## Base Colaborativa
+
+Escritórios podem enviar CCTs obtidas legitimamente, vincular ao sindicato, declarar origem, escolher escopo (`PRIVATE` / `NETWORK_RELATED_UNION` / `NETWORK_GLOBAL`), consentir com termo versionado e aguardar moderação. Publicação explícita via `CollaborativePublication` — sem quebrar isolamento de dados privados. Ver `docs/COLLABORATIVE_NETWORK.md`.

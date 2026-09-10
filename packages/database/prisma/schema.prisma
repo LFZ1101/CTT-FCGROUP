@@ -39,7 +39,41 @@ enum SourceType {
   EMPLOYER_UNION
   OFFICIAL_BULLETIN
   MANUAL_UPLOAD
+  COLLABORATIVE_NETWORK
   OTHER
+}
+
+enum CollaborativeSharingScope {
+  PRIVATE
+  NETWORK_RELATED_UNION
+  NETWORK_GLOBAL
+}
+
+enum CollaborativeContributionStatus {
+  SUBMITTED
+  PROCESSING
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED_TO_NETWORK
+  MATCHED_OFFICIAL_SOURCE
+  REVOKED
+  FAILED
+}
+
+enum CollaborativeModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+  DUPLICATE
+}
+
+enum DocumentRequestStatus {
+  OPEN
+  FULFILLED
+  CANCELLED
+  EXPIRED
 }
 
 enum AlertSeverity {
@@ -81,6 +115,9 @@ model Tenant {
   pushSubscriptions PushSubscription[]
   notificationPreferences NotificationPreference[]
   detectedDeadlines DetectedDeadline[]
+  collaborativeContributions CollaborativeContribution[]
+  collaborativePublications CollaborativePublication[]
+  documentRequests DocumentRequest[]
 }
 
 model User {
@@ -101,9 +138,9 @@ model User {
   auditLogs AuditLog[]
   pushSubscriptions PushSubscription[]
   notificationPreference NotificationPreference?
-
-  @@unique([tenantId, email])
-  @@index([tenantId])
+  collaborativeContributions CollaborativeContribution[]
+  documentRequests DocumentRequest[]
+  collaborativeReviews CollaborativeContribution[] @relation("CollaborativeReviewer")
 }
 
 model Company {
@@ -150,6 +187,9 @@ model Union {
   companies   CompanyUnion[]
   parties     InstrumentParty[]
   sources     Source[]
+  collaborativeContributions CollaborativeContribution[]
+  collaborativePublications CollaborativePublication[]
+  documentRequests DocumentRequest[]
 
   @@index([tenantId])
 }
@@ -213,6 +253,7 @@ model CollectiveInstrument {
   comparisonsAsCurrent  InstrumentComparison[] @relation("ComparisonCurrent")
   chunks                DocumentChunk[]
   deadlines             DetectedDeadline[]
+  collaborativeContributions CollaborativeContribution[]
 
   @@index([tenantId])
   @@index([registration])
@@ -382,6 +423,7 @@ model Source {
   union        Union?     @relation(fields: [unionId], references: [id], onDelete: SetNull)
   checks       SourceCheck[]
   discoveredDocuments DiscoveredDocument[]
+  officialMatches CollaborativeContribution[] @relation("OfficialMatchSource")
 
   @@index([tenantId, enabled])
 }
@@ -565,6 +607,7 @@ model DiscoveredDocument {
   pages       DocumentPage[]
   clauses     DocumentClause[]
   chunks      DocumentChunk[]
+  collaborativeContributions CollaborativeContribution[]
 
   @@unique([sourceId, normalizedUrl])
   @@index([tenantId, status, firstSeenAt])
@@ -700,4 +743,102 @@ model DocumentChunk {
   @@index([tenantId, instrumentId])
   @@index([tenantId, discoveredDocumentId])
   @@index([tenantId, createdAt])
+}
+
+/// Contribuição de documento por um escritório (tenant), com consentimento auditado.
+model CollaborativeContribution {
+  id                 String                          @id @default(cuid())
+  tenantId           String
+  documentId         String
+  instrumentId       String?
+  unionId            String
+  submittedByUserId  String
+  originDescription  String
+  sharingScope       CollaborativeSharingScope       @default(PRIVATE)
+  status             CollaborativeContributionStatus @default(SUBMITTED)
+  moderationStatus   CollaborativeModerationStatus   @default(PENDING)
+  consentAcceptedAt  DateTime
+  consentTermVersion String
+  consentUserId      String
+  submittedAt        DateTime                        @default(now())
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewNotes        String?
+  confirmedByOfficialSourceAt DateTime?
+  officialSourceId   String?
+  officialMatchMethod String?
+  officialMatchConfidence Float?
+  probableType       String?
+  notes              String?
+  createdAt          DateTime                        @default(now())
+  updatedAt          DateTime                        @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document   DiscoveredDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  instrument CollectiveInstrument? @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  union      Union                @relation(fields: [unionId], references: [id], onDelete: Restrict)
+  submitter  User                 @relation(fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  reviewer   User?                @relation("CollaborativeReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  officialSource Source?          @relation("OfficialMatchSource", fields: [officialSourceId], references: [id], onDelete: SetNull)
+  publication CollaborativePublication?
+  fulfilledRequests DocumentRequest[]
+
+  @@index([tenantId, status])
+  @@index([unionId, status])
+  @@index([documentId])
+  @@index([moderationStatus, submittedAt])
+}
+
+/// Camada explícita de publicação na rede (não remove filtro tenant dos docs privados).
+model CollaborativePublication {
+  id               String                    @id @default(cuid())
+  contributionId   String                    @unique
+  contributorTenantId String
+  unionId          String
+  documentId       String
+  instrumentId     String?
+  sharingScope     CollaborativeSharingScope
+  title            String?
+  documentClass    String?
+  contentHash      String?
+  publishedAt      DateTime                  @default(now())
+  revokedAt        DateTime?
+  revokeReason     String?
+  unionMatchKey    String
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  tenant       Tenant                     @relation(fields: [contributorTenantId], references: [id], onDelete: Cascade)
+  contribution CollaborativeContribution  @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+  union        Union                      @relation(fields: [unionId], references: [id], onDelete: Restrict)
+
+  @@index([unionMatchKey, revokedAt])
+  @@index([sharingScope, publishedAt])
+  @@index([contentHash])
+}
+
+/// Pedido de CCT à rede (agregável por groupKey).
+model DocumentRequest {
+  id                       String                @id @default(cuid())
+  tenantId                 String
+  requestedByUserId        String
+  unionId                  String
+  instrumentType           String?
+  referencePeriod          String?
+  notes                    String?
+  status                   DocumentRequestStatus @default(OPEN)
+  groupKey                 String
+  fulfilledAt              DateTime?
+  fulfilledByContributionId String?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requester    User                       @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  union        Union                      @relation(fields: [unionId], references: [id], onDelete: Restrict)
+  contribution CollaborativeContribution? @relation(fields: [fulfilledByContributionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([groupKey, status])
+  @@index([unionId, status])
 }

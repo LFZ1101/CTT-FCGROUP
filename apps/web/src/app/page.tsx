@@ -78,6 +78,9 @@ export default function Home() {
             ['Prazos críticos', m.criticalDeadlines ?? 0, 'próximos 7 dias'],
             ['Aguardando validação', m.pendingValidations, 'revisão humana'],
             ['Alertas não lidos', m.unreadAlerts, 'publicação e divergência'],
+            ['Rede colaborativa', m.collaborativeNetworkNew ?? 0, 'novas na semana'],
+            ['Collab. revisão', m.collaborativePendingReview ?? 0, 'aguardando'],
+            ['Pedidos atendidos', m.documentRequestsFulfilled ?? 0, '30 dias'],
             ['Vigências (60d)', m.instrumentsExpiringSoon ?? 0, 'risco de vencimento'],
           ].map(([k, v, f]) => (
             <article className="metric" key={String(k)}>

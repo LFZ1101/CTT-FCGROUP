@@ -30,6 +30,7 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | Tarefas | `GET/POST /tasks`, `POST /tasks/sync-review`, `PATCH /tasks/:id/status` |
 | Comparações | `POST/GET /comparisons`, `GET /comparisons/:id` (UX: principais mudanças) |
 | RAG | `POST /rag/ask`, `POST /rag/reindex` |
+| Rede colaborativa | `GET /collaborative/overview`, `POST /collaborative/contributions`, `GET /collaborative/contributions`, `GET /collaborative/contributions/:id`, `GET /collaborative/moderation/pending`, `POST /collaborative/contributions/:id/moderate`, `POST /collaborative/contributions/:id/revoke`, `GET /collaborative/network`, `GET /collaborative/network/:publicationId/access`, `POST /collaborative/requests`, `GET /collaborative/requests/groups`, `POST /collaborative/requests/:id/cancel`, `GET /collaborative/surveillance-overlay`, `POST /collaborative/match-official/:documentId` |
 | Auditoria | `GET /audit` |
 | `POST /monitoring/check` | Enfileira worker (não scrape sync) |
 | Health | `GET /health`, `GET /health/metrics` (fora do prefixo `api/v1`) |
