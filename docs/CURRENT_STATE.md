@@ -1,8 +1,8 @@
 # Estado atual — CCT Intelligence
 
 **Data:** 2026-09-10  
-**Branch ativa:** `cursor/cct-intelligence-import-csv-310a`  
-**Base preservada:** fases 3A–3V + feedback P0 + Base Colaborativa + import CSV
+**Branch ativa:** `cursor/cct-intelligence-moderator-role-310a`  
+**Base preservada:** fases 3A–3V + feedback P0 + Base Colaborativa + import CSV + MODERATOR
 
 ## Promessa de valor (pós-feedback)
 
@@ -26,7 +26,7 @@ Reduzir a chance de uma alteração trabalhista passar despercebida — inclusiv
 | Matching assistido | DONE_NEEDS_TESTS | P0 |
 | Vigilância / cobertura | DONE_NEEDS_TESTS | + overlay colaborativo |
 | Deadlines | DONE_NEEDS_TESTS | P0 |
-| **Base Colaborativa** | **DONE_NEEDS_TESTS** | Contribuição, publicação, pedidos, match hash |
+| **Base Colaborativa** | **DONE_NEEDS_TESTS** | Contribuição, publicação, pedidos, match, MODERATOR |
 | Import vínculos CSV | DONE_NEEDS_TESTS | `/empresas/importar` |
 | Funcionários/folha oficial | NOT_STARTED | P2 |
 

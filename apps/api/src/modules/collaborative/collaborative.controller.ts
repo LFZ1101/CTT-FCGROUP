@@ -47,29 +47,29 @@ export class CollaborativeController {
   }
 
   @Get('moderation/pending')
-  @Roles('OWNER', 'ADMIN')
+  @Roles('OWNER', 'ADMIN', 'MODERATOR')
   pending(@CurrentUser() u: AuthUser) {
-    return this.service.listPendingModeration(u.tenantId);
+    return this.service.listPendingModeration(u.tenantId, u.role);
   }
 
   @Post('contributions/:id/moderate')
-  @Roles('OWNER', 'ADMIN')
+  @Roles('OWNER', 'ADMIN', 'MODERATOR')
   moderate(
     @CurrentUser() u: AuthUser,
     @Param('id') id: string,
     @Body() dto: ModerateContributionDto,
   ) {
-    return this.service.moderate(u.tenantId, u.sub, id, dto.decision, dto.notes);
+    return this.service.moderate(u.tenantId, u.sub, id, dto.decision, dto.notes, u.role);
   }
 
   @Post('contributions/:id/revoke')
-  @Roles('OWNER', 'ADMIN')
+  @Roles('OWNER', 'ADMIN', 'MODERATOR')
   revoke(
     @CurrentUser() u: AuthUser,
     @Param('id') id: string,
     @Body() dto: RevokeContributionDto,
   ) {
-    return this.service.revoke(u.tenantId, u.sub, id, dto.reason);
+    return this.service.revoke(u.tenantId, u.sub, id, dto.reason, u.role);
   }
 
   @Get('network')

@@ -10,6 +10,7 @@ export default function ModeracaoRedePage() {
   const [rows, setRows] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState('');
+  const [role, setRole] = useState('');
 
   const load = () =>
     api<any[]>('/collaborative/moderation/pending')
@@ -17,6 +18,12 @@ export default function ModeracaoRedePage() {
       .catch((e) => setMsg(e.message));
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem('cct_user');
+      if (raw) setRole(JSON.parse(raw).role || '');
+    } catch {
+      /* ignore */
+    }
     void load();
   }, []);
 
@@ -36,17 +43,31 @@ export default function ModeracaoRedePage() {
     }
   }
 
+  const showOffice = role === 'MODERATOR' || role === 'OWNER' || role === 'ADMIN';
+
   return (
     <Shell title="Moderação colaborativa">
       <div className="page">
         <PageHeader
-          eyebrow="Controle de qualidade"
+          eyebrow={role === 'MODERATOR' ? 'Rede · cross-tenant' : 'Controle de qualidade'}
           title="Contribuições pendentes"
-          description="Aprovar, rejeitar ou marcar duplicatas antes da publicação na rede."
+          description={
+            role === 'MODERATOR'
+              ? 'Fila global da Base Colaborativa. Escritório remetente visível apenas para auditoria.'
+              : 'Aprovar, rejeitar ou marcar duplicatas antes da publicação na rede (do seu escritório).'
+          }
         />
         {msg ? <p className="feedmeta" role="status">{msg}</p> : null}
         <DataTable
-          headers={['Documento', 'Sindicato', 'Origem', 'Escopo', 'Confiança', 'Ações']}
+          headers={[
+            'Documento',
+            ...(showOffice ? ['Escritório'] : []),
+            'Sindicato',
+            'Origem',
+            'Escopo',
+            'Confiança',
+            'Ações',
+          ]}
           empty={!rows.length}
         >
           {rows.map((r) => (
@@ -55,6 +76,7 @@ export default function ModeracaoRedePage() {
                 <b>{r.document?.title || r.id}</b>
                 <div className="feedmeta">{r.document?.processingStatus}</div>
               </td>
+              {showOffice ? <td>{r.tenant?.name || r.tenant?.slug || '—'}</td> : null}
               <td>{r.union?.name}</td>
               <td>{r.originDescription}</td>
               <td>{r.sharingScope}</td>

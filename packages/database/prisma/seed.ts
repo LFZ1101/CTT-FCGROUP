@@ -69,7 +69,32 @@ async function main() {
   console.log('Login: owner@demo.cct / Demo@123456');
 }
 
+async function ensureModerator() {
+  const tenant = await prisma.tenant.findFirst({ where: { slug: 'escritorio-demo' } });
+  if (!tenant) return;
+  const email = 'moderator@demo.cct';
+  const existing = await prisma.user.findFirst({ where: { email, tenantId: tenant.id } });
+  if (existing) {
+    if (existing.role !== 'MODERATOR') {
+      await prisma.user.update({ where: { id: existing.id }, data: { role: 'MODERATOR' } });
+    }
+    return;
+  }
+  const passwordHash = await bcrypt.hash('Demo@123456', 12);
+  await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Moderador Rede',
+      email,
+      passwordHash,
+      role: 'MODERATOR',
+    },
+  });
+  console.log('Moderador demo: moderator@demo.cct / Demo@123456');
+}
+
 main()
+  .then(ensureModerator)
   .catch((error) => {
     console.error(error);
     process.exit(1);
