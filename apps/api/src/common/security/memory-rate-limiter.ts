@@ -1,6 +1,6 @@
 /**
  * Rate limit em memória por chave (ex.: e-mail de login).
- * Adequado para instância única; em cluster usar Redis.
+ * Fallback local quando Redis não está disponível.
  */
 export class MemoryRateLimiter {
   private readonly hits = new Map<string, number[]>();

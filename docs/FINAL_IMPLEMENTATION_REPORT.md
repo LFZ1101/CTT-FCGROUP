@@ -66,6 +66,7 @@
 17. Checklist de revisão documental + `POST /documents/:id/review`
 18. Motor de impacto em folha (`GET /payroll-impact/comparisons/:id`) + UI no comparador
 19. Notificações SMTP opcionais (`POST /notifications/alerts/email`)
+20. Login multi-tenant por `tenantSlug` + rate limit Redis (fallback memória); UI e e2e smoke
 
 ## Arquitetura final
 
@@ -87,6 +88,7 @@ Ver `docs/ARCHITECTURE.md`. Filas: `source-monitoring`, `document-download`, `do
 - `POST /documents/:id/review`
 - `GET /payroll-impact/comparisons/:comparisonId`
 - `POST /notifications/alerts/email`
+- `POST /auth/login` com `tenantSlug?` (409 se ambíguo)
 - Health com checks database/redis (`GET /health`)
 
 ## Workers / filas
@@ -119,7 +121,6 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvect
 - Build/push de imagens Docker em registry
 - UX polish / acessibilidade formal
 - Observabilidade OTel/Sentry
-- Login multi-tenant por slug / e-mail global único
 - Push notifications (só e-mail SMTP)
 
 ## Riscos
@@ -151,8 +152,7 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Próximos passos
 
-1. Validar Mediador em staging com fonte real
-2. Rate limit Redis em cluster
-3. OCR / PDFs escaneados
-4. Observabilidade (OTel/Sentry)
-5. Login por slug de tenant
+1. OCR / PDFs escaneados
+2. Validar Mediador em staging com fonte real
+3. Observabilidade (OTel/Sentry)
+4. Push notifications

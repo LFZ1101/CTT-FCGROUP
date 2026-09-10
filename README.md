@@ -2,7 +2,7 @@
 
 Plataforma SaaS de inteligência trabalhista para escritórios contábeis.
 
-Base atual: **Fases 1–3K** (monitoramento → pipeline documental → validação → RAG → busca → RBAC → ops).
+Base atual: **Fases 1–3O** (pipeline documental → RAG → alertas/e-mail → impacto em folha → login por slug).
 
 ## Stack
 
@@ -15,7 +15,7 @@ Base atual: **Fases 1–3K** (monitoramento → pipeline documental → validaç
 ## Execução local
 
 1. Copie `.env.example` → `.env` e `apps/web/.env.local.example` → `apps/web/.env.local`.
-2. Infra: `docker compose up -d` (Postgres, Redis, MinIO).
+2. Infra: `docker compose up -d` (Postgres pgvector, Redis, MinIO).
 3. `pnpm install`
 4. `pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed`  
    (alternativa rápida em dev: `pnpm db:push`)
@@ -23,6 +23,7 @@ Base atual: **Fases 1–3K** (monitoramento → pipeline documental → validaç
 
 ### Credenciais do seed
 
+- workspace slug: `escritorio-demo`
 - e-mail: `owner@demo.cct`
 - senha: `Demo@123456`
 

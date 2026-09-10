@@ -41,7 +41,7 @@ Auditoria da base `cct-intelligence-phase2.zip` antes da evolução para Fase 3.
 1. ~~Extrair scraper / API apenas enfileira monitoramento.~~ **Feito (3L)** — API enfileira `source-monitoring`; scrape só no worker.
 2. ~~RolesGuard + matriz RBAC efetiva.~~ **Feito**
 3. ~~Gravação sistemática de `AuditLog`.~~ **Parcial** — validação, RAG, comparação, review documental, etc.
-4. Login com `tenantSlug` ou e-mail global único — **ainda aberto**.
+4. ~~Login com `tenantSlug` ou e-mail global único~~ **Feito (3O)** — slug no login; 409 se ambíguo; Redis RL.
 5. ~~Validação cross-tenant de FKs em alerts/tasks/sources.~~ **Feito** (TenantOwnershipService).
 6. ~~Migrations Prisma versionadas.~~ **Baseline + migrate deploy no CI.**
 7. ~~Testes de integração multi-tenant.~~ **Feito** (Postgres integration); E2E HTTP bearer ainda pendente.

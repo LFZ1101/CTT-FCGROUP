@@ -27,5 +27,10 @@ BOOT=$(curl -sS -X POST "http://127.0.0.1:${PORT}/api/v1/auth/bootstrap" \
   -H 'Content-Type: application/json' \
   -d "{\"tenantName\":\"E2E Tenant\",\"name\":\"E2E Owner\",\"email\":\"${EMAIL}\",\"password\":\"${PASS}\"}")
 TOKEN=$(printf '%s' "$BOOT" | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+SLUG=$(printf '%s' "$BOOT" | python3 -c 'import sys,json; print(json.load(sys.stdin)["user"]["tenantSlug"])')
+LOGIN=$(curl -sS -X POST "http://127.0.0.1:${PORT}/api/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASS}\",\"tenantSlug\":\"${SLUG}\"}")
+python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('accessToken'); assert d['user']['tenantSlug']==sys.argv[2]; print('e2e login ok', d['user']['tenantSlug'])" "$LOGIN" "$SLUG"
 COMPANIES=$(curl -sS -H "Authorization: Bearer ${TOKEN}" "http://127.0.0.1:${PORT}/api/v1/companies")
 python3 -c "import json,sys; rows=json.loads(sys.argv[1]); assert isinstance(rows, list); print('e2e ok companies', len(rows))" "$COMPANIES"

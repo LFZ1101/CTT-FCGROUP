@@ -24,16 +24,14 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 17 | Dashboard enriquecido | DONE_NEEDS_TESTS |
 | 18 | UX/UI polish | PARTIAL (painel folha no comparador) |
 | 19 | Observabilidade | DONE_NEEDS_TESTS (health) |
-| 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + rate limit + FK) |
+| 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + Redis RL + tenantSlug + FK) |
 | 21 | Testes completos | PARTIAL → integration multi-tenant feito |
 | 22 | Documentação | DONE_NEEDS_TESTS |
 | 23 | Preparação deploy | DONE_NEEDS_TESTS (Dockerfiles + CI + migrate) |
 
 ## Próximos (não bloqueantes)
 
-- Adaptador Mediador em produção real (anti-bot/JS)
 - OCR para PDFs escaneados
-- Rate limit Redis em cluster
+- Adaptador Mediador em produção real (anti-bot/JS)
 - Observabilidade OTel/Sentry
-- Login por slug de tenant
 - Push notifications (além de e-mail)

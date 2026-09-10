@@ -8,8 +8,8 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 
 | Método | Path | Notas |
 |---|---|---|
-| POST | `/auth/bootstrap` | Cria tenant inicial |
-| POST | `/auth/login` | JWT |
+| POST | `/auth/bootstrap` | Cria tenant inicial; retorna JWT + `user.tenantSlug` |
+| POST | `/auth/login` | Body: `{ email, password, tenantSlug? }` — `tenantSlug` obrigatório se e-mail ambíguo (409) |
 
 ## Domínio (amostra)
 

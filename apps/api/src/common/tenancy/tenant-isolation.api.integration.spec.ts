@@ -150,6 +150,7 @@ describe('multi-tenant API isolation (auth+guards+queries)', () => {
   });
 
   after(async () => {
+    await auth.onModuleDestroy();
     await prisma.tenant.deleteMany({
       where: { id: { in: [tenantA, tenantB].filter(Boolean) } },
     });

@@ -153,10 +153,17 @@
 - `scan-expiring` notifica automaticamente WARNING/CRITICAL (não falha o scan se SMTP cair)
 - Botão “E-mail” na central de alertas
 
+## 3O — Login por tenantSlug + rate limit Redis (entregue)
+
+- `POST /auth/login` aceita `tenantSlug`; 409 se e-mail ambíguo sem slug
+- Bootstrap permite mesmo e-mail em tenants distintos; resposta inclui `user.tenantSlug`
+- JWT e UI de login carregam slug do workspace
+- `RedisRateLimiter` (INCR/PEXPIRE) com fallback `MemoryRateLimiter`
+- E2E smoke cobre login com slug; testes unitários de ambiguidade
+
 ## Próximo
 
-- Mediador staging real / anti-bot
 - OCR PDFs escaneados
-- Rate limit Redis em cluster
+- Mediador staging real / anti-bot
 - Observabilidade OTel/Sentry
-- Login por slug de tenant
+- Push notifications
