@@ -146,9 +146,9 @@ Usuário cria escritório, importa empresas, cadastra sindicatos/fontes e acompa
 - [x] Storage S3-compatible / MinIO
 - [x] Download pipeline (hash/MIME/versão)
 - [x] Adaptador Mediador dedicado (HTTP stealth + browser opcional; live anti-bot ainda limitado)
+- [x] Impacto em folha (heurística v1 + piso × colaboradores)
+- [x] Colaboradores (CRUD + CSV, PII mínima)
+- [x] Framework integrações ERP (sem sync fake)
 - [ ] Crawlers sindicais específicos
-- [x] Parser PDF / páginas (texto embutido + OCR opcional para escaneados)
-- [x] IA/RAG (heurística + embeddings locais híbridos; pgvector/OpenAI opcional)
-- [ ] Compatibilidade automática
+- [x] Compatibilidade automática (score explicável + sugestão)
 - [x] Comparador de versões
-- [x] Impacto em folha (heurística v1 + UI)

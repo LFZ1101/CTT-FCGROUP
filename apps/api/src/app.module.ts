@@ -26,6 +26,8 @@ import { SurveillanceModule } from './modules/surveillance/surveillance.module';
 import { DeadlinesModule } from './modules/deadlines/deadlines.module';
 import { CollaborativeModule } from './modules/collaborative/collaborative.module';
 import { ImportsModule } from './modules/imports/imports.module';
+import { EmployeesModule } from './modules/employees/employees.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { ImportsModule } from './modules/imports/imports.module';
     DeadlinesModule,
     CollaborativeModule,
     ImportsModule,
+    EmployeesModule,
+    IntegrationsModule,
   ],
   controllers: [HealthController],
   providers: [

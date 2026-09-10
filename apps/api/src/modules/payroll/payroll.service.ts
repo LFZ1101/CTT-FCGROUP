@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { analyzePayrollImpact } from './impact';
+import { estimateEmployeeFloorImpacts, extractFloorCentsFromText } from './floor-impact';
 
 @Injectable()
 export class PayrollService {
@@ -72,6 +73,86 @@ export class PayrollService {
       ...analysis,
       disclaimer:
         'Estimativa qualitativa com base em evidência textual. Não substitui cálculo oficial de folha.',
+    };
+  }
+
+  async floorImpactForInstrument(
+    tenantId: string,
+    userId: string,
+    instrumentId: string,
+    companyId?: string,
+  ) {
+    const instrument = await this.prisma.collectiveInstrument.findFirst({
+      where: { id: instrumentId, tenantId },
+      include: {
+        clauses: { where: { category: { in: ['FLOOR', 'WAGE', 'SALARY'] } }, take: 20 },
+      },
+    });
+    if (!instrument) throw new NotFoundException('Instrumento não encontrado');
+
+    let floorCents: number | null = null;
+    const summary = instrument.operationalSummary as any;
+    if (summary?.piso || summary?.floor || summary?.salaryFloor) {
+      const raw = String(summary.piso || summary.floor || summary.salaryFloor);
+      floorCents = extractFloorCentsFromText(`piso R$ ${raw}`) || extractFloorCentsFromText(raw);
+    }
+    if (!floorCents) {
+      for (const c of instrument.clauses) {
+        floorCents = extractFloorCentsFromText(`${c.title || ''} ${c.text || ''}`);
+        if (floorCents) break;
+      }
+    }
+    if (!floorCents && instrument.rawText) {
+      floorCents = extractFloorCentsFromText(instrument.rawText);
+    }
+    if (!floorCents) {
+      return {
+        instrumentId,
+        floorCents: null,
+        impactedCount: 0,
+        impacted: [],
+        message: 'Não foi possível extrair piso salarial do instrumento com confiança.',
+        disclaimer: 'Estimativa. Não altera folha automaticamente.',
+      };
+    }
+
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        ...(companyId ? { companyId } : {}),
+      },
+      select: {
+        id: true,
+        displayName: true,
+        jobTitle: true,
+        baseSalaryCents: true,
+        companyId: true,
+      },
+    });
+
+    const estimate = estimateEmployeeFloorImpacts({ floorCents, employees });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action: 'PAYROLL_FLOOR_IMPACT_ESTIMATED',
+        entity: 'CollectiveInstrument',
+        entityId: instrumentId,
+        metadata: {
+          floorCents,
+          impactedCount: estimate.impactedCount,
+          companyId: companyId || null,
+        },
+      },
+    });
+
+    return {
+      instrumentId,
+      instrumentTitle: instrument.title,
+      modelVersion: 'payroll-floor-v1',
+      ...estimate,
     };
   }
 }

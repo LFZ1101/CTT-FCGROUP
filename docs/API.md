@@ -18,6 +18,9 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | Dashboard | `GET /dashboard` (attention + coverage + mediador) |
 | Empresas | `GET/POST /companies`, `PATCH/DELETE /companies/:id`, vínculos `/companies/:id/unions` |
 | Importação CSV | `POST /imports/companies` `{ csvText, mode: preview\|confirm }`, `POST /imports/union-links` (mesmo contrato) |
+| Colaboradores | `GET/POST /employees`, `PATCH/DELETE /employees/:id`, `POST /employees/import` |
+| Impacto folha | `GET /payroll-impact/comparisons/:id`, `GET /payroll-impact/instruments/:id/floor?companyId=` |
+| Integrações | `GET /integrations`, `POST /integrations/intent` |
 | Vínculo assistido | `GET /companies/:id/union-suggestions`, `POST .../persist`, `POST /company-unions/:linkId/decide` |
 | Sindicatos | `GET/POST /unions`, `GET/PATCH/DELETE /unions/:id` (detalhe com empresas/fontes/prazos) |
 | Vigilância | `GET /surveillance`, `POST /surveillance/scan-divergences` |
