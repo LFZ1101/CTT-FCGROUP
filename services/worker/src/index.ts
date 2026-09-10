@@ -32,6 +32,7 @@ import { segmentClauses } from './segment.js';
 import { extractMetadata } from './metadata.js';
 import { promoteToInstrument } from './promote.js';
 import { indexChunksForDocument, indexChunksForInstrument } from './chunks.js';
+import { workerLog } from './log.js';
 
 const prisma = new PrismaClient();
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -544,7 +545,19 @@ async function parseDocument(documentId: string, tenantId: string) {
 new Worker(
   'source-monitoring',
   async (job) => {
-    if (job.name === 'check-source') await monitorSource(job.data.sourceId);
+    workerLog('info', 'job_start', { queue: 'source-monitoring', jobId: job.id, name: job.name });
+    try {
+      if (job.name === 'check-source') await monitorSource(job.data.sourceId);
+      workerLog('info', 'job_ok', { queue: 'source-monitoring', jobId: job.id, name: job.name });
+    } catch (err) {
+      workerLog('error', 'job_fail', {
+        queue: 'source-monitoring',
+        jobId: job.id,
+        name: job.name,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
   },
   { connection, concurrency: Number(process.env.MONITOR_CONCURRENCY || 3) },
 );
@@ -552,8 +565,25 @@ new Worker(
 new Worker(
   'document-download',
   async (job) => {
-    if (job.name === 'download-document') {
-      await downloadDocument(job.data.documentId, job.data.tenantId);
+    workerLog('info', 'job_start', {
+      queue: 'document-download',
+      jobId: job.id,
+      name: job.name,
+      tenantId: job.data.tenantId,
+      documentId: job.data.documentId,
+    });
+    try {
+      if (job.name === 'download-document') {
+        await downloadDocument(job.data.documentId, job.data.tenantId);
+      }
+      workerLog('info', 'job_ok', { queue: 'document-download', jobId: job.id });
+    } catch (err) {
+      workerLog('error', 'job_fail', {
+        queue: 'document-download',
+        jobId: job.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
   },
   { connection, concurrency: Number(process.env.DOWNLOAD_CONCURRENCY || 2) },
@@ -562,8 +592,25 @@ new Worker(
 new Worker(
   'document-parse',
   async (job) => {
-    if (job.name === 'parse-document') {
-      await parseDocument(job.data.documentId, job.data.tenantId);
+    workerLog('info', 'job_start', {
+      queue: 'document-parse',
+      jobId: job.id,
+      name: job.name,
+      tenantId: job.data.tenantId,
+      documentId: job.data.documentId,
+    });
+    try {
+      if (job.name === 'parse-document') {
+        await parseDocument(job.data.documentId, job.data.tenantId);
+      }
+      workerLog('info', 'job_ok', { queue: 'document-parse', jobId: job.id });
+    } catch (err) {
+      workerLog('error', 'job_fail', {
+        queue: 'document-parse',
+        jobId: job.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
     }
   },
   { connection, concurrency: Number(process.env.PARSE_CONCURRENCY || 2) },

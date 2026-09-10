@@ -68,9 +68,33 @@ export function detectMediadorBlock(html: string, status: number): {
 
 export async function fetchMediadorPage(
   url: string,
+  init?: { timeoutMs?: number; userAgent?: string; attempts?: number },
+): Promise<MediadorFetchResult> {
+  const attempts = Math.max(1, init?.attempts ?? Number(process.env.MEDIADOR_MAX_ATTEMPTS || 3));
+  const baseDelay = Math.max(100, Number(process.env.MEDIADOR_RETRY_MS || 800));
+  let last: MediadorFetchResult | null = null;
+
+  for (let i = 0; i < attempts; i++) {
+    last = await fetchMediadorPageOnce(url, init);
+    const retryable =
+      last.status === 429 ||
+      last.status === 503 ||
+      last.status === 502 ||
+      (last.status === 0 && /abort|timeout|network|fetch/i.test(last.reason || ''));
+    if (last.ok || last.blocked || !retryable || i === attempts - 1) {
+      return last;
+    }
+    await new Promise((r) => setTimeout(r, baseDelay * (i + 1)));
+  }
+
+  return last!;
+}
+
+async function fetchMediadorPageOnce(
+  url: string,
   init?: { timeoutMs?: number; userAgent?: string },
 ): Promise<MediadorFetchResult> {
-  const timeoutMs = init?.timeoutMs ?? 20_000;
+  const timeoutMs = init?.timeoutMs ?? Number(process.env.MEDIADOR_TIMEOUT_MS || 20_000);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -78,7 +102,7 @@ export async function fetchMediadorPage(
       redirect: 'follow',
       signal: controller.signal,
       headers: {
-        'user-agent': init?.userAgent || DEFAULT_UA,
+        'user-agent': init?.userAgent || process.env.MEDIADOR_UA || DEFAULT_UA,
         accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8',
       },

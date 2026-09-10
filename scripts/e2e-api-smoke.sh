@@ -32,5 +32,8 @@ LOGIN=$(curl -sS -X POST "http://127.0.0.1:${PORT}/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
   -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASS}\",\"tenantSlug\":\"${SLUG}\"}")
 python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert d.get('accessToken'); assert d['user']['tenantSlug']==sys.argv[2]; print('e2e login ok', d['user']['tenantSlug'])" "$LOGIN" "$SLUG"
-COMPANIES=$(curl -sS -H "Authorization: Bearer ${TOKEN}" "http://127.0.0.1:${PORT}/api/v1/companies")
+COMPANIES=$(curl -sS -D /tmp/e2e-headers.txt -H "Authorization: Bearer ${TOKEN}" "http://127.0.0.1:${PORT}/api/v1/companies")
 python3 -c "import json,sys; rows=json.loads(sys.argv[1]); assert isinstance(rows, list); print('e2e ok companies', len(rows))" "$COMPANIES"
+grep -qi 'x-request-id:' /tmp/e2e-headers.txt
+METRICS=$(curl -sS "http://127.0.0.1:${PORT}/health/metrics")
+python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert 'requests' in d; print('e2e metrics ok', d.get('requests'))" "$METRICS"

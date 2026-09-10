@@ -28,7 +28,7 @@ Autenticação: `Authorization: Bearer <jwt>` após `POST /auth/login`.
 | RAG | `POST /rag/ask`, `POST /rag/reindex` |
 | Auditoria | `GET /audit` |
 | `POST /monitoring/check` | Enfileira worker (não scrape sync) |
-| Health | `GET /health` (fora do prefixo `api/v1`, para probes) |
+| Health | `GET /health`, `GET /health/metrics` (fora do prefixo `api/v1`) |
 | Documentos | `POST /documents/:id/review` — revisão humana do artefato |
 | Payroll | `GET /payroll-impact/comparisons/:comparisonId` |
 | Notificações | `POST /notifications/alerts/email` `{ alertId }` |

@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { Redis } from 'ioredis';
+import { metricsRegistry } from './observability/metrics';
+import { isSentryEnabled } from './observability/sentry';
 
 @Controller('health')
 export class HealthController {
@@ -46,7 +48,18 @@ export class HealthController {
     return {
       status: overall,
       service: 'cct-intelligence-api',
+      version: process.env.APP_VERSION || 'dev',
+      sentry: isSentryEnabled(),
       checks,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('metrics')
+  metrics() {
+    return {
+      service: 'cct-intelligence-api',
+      ...metricsRegistry.snapshot(),
       timestamp: new Date().toISOString(),
     };
   }

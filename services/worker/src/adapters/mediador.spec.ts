@@ -56,6 +56,7 @@ describe('mediador adapter (real integration helpers)', () => {
     const { fetchMediadorPage } = await import('./mediador.js');
     const result = await fetchMediadorPage('https://www.mediador.mte.gov.br/', {
       timeoutMs: 8000,
+      attempts: 1,
     });
     if (result.status === 0) {
       assert.match(String(result.reason || ''), /fetch|network|resolve|abort|ENOTFOUND|DNS|Failed/i);
@@ -63,5 +64,15 @@ describe('mediador adapter (real integration helpers)', () => {
     }
     assert.ok(result.status > 0);
     assert.equal(typeof result.html, 'string');
+  });
+
+  it('aceita attempts=1 em URL inválida sem travar', async () => {
+    const { fetchMediadorPage } = await import('./mediador.js');
+    const result = await fetchMediadorPage('https://invalid.mediador.local.test/', {
+      timeoutMs: 1500,
+      attempts: 1,
+    });
+    assert.equal(result.ok, false);
+    assert.ok(result.status === 0 || result.blocked);
   });
 });

@@ -169,8 +169,15 @@
 - UI do documento: badge e checklist de OCR; ADR 0004
 - Dockerfile do worker inclui poppler/tesseract (por+eng)
 
+## 3Q — Observabilidade + resiliência Mediador (entregue)
+
+- `x-request-id`, logs JSON HTTP, `GET /health/metrics`, Sentry opcional (`SENTRY_DSN`)
+- Exception filter com `requestId` nas respostas de erro
+- Worker: logs estruturados por job (`jobId`, fila, tenant)
+- Mediador: retry/backoff em 429/502/503/rede; ADR 0005
+
 ## Próximo
 
-- Mediador staging real / anti-bot
-- Observabilidade OTel/Sentry
+- Mediador staging real / anti-bot avançado
+- OpenTelemetry traces
 - Push notifications

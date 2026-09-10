@@ -51,6 +51,14 @@ Worker consome `source-monitoring`, `document-download`, `document-parse`. Inter
 - Opcional: `OCR_LANG=por+eng`, `OCR_MAX_PAGES=20`
 - Sem OCR: parse continua e documento fica com `needsReview` + `metadata.ocr`
 
+## Observabilidade
+
+- Respostas incluem / aceitam `x-request-id`
+- `GET /health` — api/db/redis + flag Sentry
+- `GET /health/metrics` — contadores e latência p50/p95/p99 (por processo)
+- Sentry: `SENTRY_DSN` (opcional)
+- Worker: logs JSON com `jobId`
+
 ## Postgres / pgvector
 
 Compose e CI usam `pgvector/pgvector:pg16`. Se o volume local foi criado com `postgres:16-alpine`, a migration `20260910140000_pgvector_embeddings` falha até recriar o volume (`docker compose down -v && docker compose up -d`). Sem a extensão, o RAG continua com embeddings JSON.
