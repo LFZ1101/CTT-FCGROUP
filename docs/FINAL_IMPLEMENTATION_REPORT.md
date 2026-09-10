@@ -1,201 +1,37 @@
-# Relatório final de implementação — CCT Intelligence
+# Relatório final — fechamento do núcleo CCT Intelligence
 
-**Branch:** `cursor/cct-intelligence-autonomous-roadmap-310a`  
 **Data:** 2026-09-10  
-**Base preservada:** Fase 3J (`5b6226e`) em `cursor/cct-intelligence-phase3-foundation-310a`
+**Stack de PRs:** foundation → autonomous → feedback P0 → collaborative → import CSV → MODERATOR → phase6 payroll
 
----
+## O que o sistema faz de ponta a ponta
 
-## Resumo do que JÁ EXISTIA antes desta execução
+1. Multi-tenant com JWT, RBAC (incl. MODERATOR)
+2. Cadastro/importação de empresas e vínculos sindicais
+3. Monitoramento de fontes (sites + Mediador HTTP/browser opcional)
+4. Pipeline documental (storage, hash, parse, classificação, cláusulas, RAG com evidência)
+5. Vigilância Sindical, prazos, alertas, tarefas, dashboard operacional
+6. Base Colaborativa moderada (publicação explícita, match oficial)
+7. Colaboradores (PII mínima) + estimativa de impacto de piso
+8. Framework de integrações ERP **sem sync fake**
 
-- Monorepo api/web/worker/database operacional
-- Auth JWT + bootstrap de tenant + seed demo
-- CRUD empresas; sindicatos/fontes (create/list)
-- Monitoramento HTML genérico + filas BullMQ
-- Storage MinIO + download pipeline (MIME, SHA-256, DocumentAsset)
-- Parse por página, classificação, metadados, cláusulas, promote
-- Validação humana, compatibilidade, comparador, RAG híbrido, auditoria
-- RolesGuard parcial (empresas/instrumentos/documentos/comparações/rag/audit)
-- UI operacional (dashboard, empresas, instrumentos, monitoramento, etc.)
+## Aceite funcional preservado
 
-## MÓDULOS QUE JÁ ESTAVAM PRONTOS E FORAM PRESERVADOS
+- Isolamento entre tenants
+- Origens de documento diferenciadas
+- Humano no loop (vínculos, moderação, folha)
+- Auditoria das ações relevantes
 
-- Pipeline documental 3A–3J (storage → RAG) — **sem reescrita**
-- Modelos Prisma existentes (estendidos só por uso, sem migration destrutiva)
-- Motor de comparação e compatibilidade heurísticos
-- Embeddings locais hashing-v1 + retrieve híbrido
-- AskPanel / AuditTrail / páginas de detalhe de documento e instrumento
-- Docker Compose de Postgres/Redis/MinIO
-- Contratos de API já usados pelo frontend
+## Explicitamente NÃO feito / BLOCKED
 
-## ALTERAÇÕES EM CÓDIGO EXISTENTE E MOTIVO
-
-| Alteração | Motivo concreto |
+| Item | Motivo |
 |---|---|
-| `package.json` typecheck/lint | Script `pnpm -r exec tsc` quebrava em `packages/database` sem tsconfig |
-| Controllers unions/sources/alerts/tasks/monitoring/dashboard | Completar RBAC (dívida AUDIT_PHASE2) |
-| Unions/Sources services | CRUD incompleto bloqueava operação |
-| `DocumentsService.search` + rota `GET /documents/search` | Fase 16 NOT_STARTED |
-| DashboardService métricas extras | Fase 17 PARTIAL |
-| HealthController db/redis | Observabilidade mínima (Fase 19) |
-| Worker `monitorSource` + adaptador Mediador | Fase adaptador NOT_STARTED → PARTIAL sem substituir scraper |
-| Worker `package.json` test glob | `**` não expandia specs na raiz de `src/` |
-| Shell nav + páginas alertas/tarefas/fontes/home | Integrar novas APIs; lista `/documentos` |
-| Docs CURRENT_STATE/AUDIT/PHASE_3/README | Refletir estado REAL |
-| `AlertsService.scanExpiringInstruments` | Disparar e-mail em WARNING/CRITICAL |
-| UI `/instrumentos/comparar` | Painel de impacto em folha pós-comparação |
+| Contornar CAPTCHA Mediador | Política/compliance |
+| Sync ONVIO/Domínio/Alterdata | Sem API/credenciais; doc §66 |
+| Billing / planos SaaS | Fora do núcleo |
+| Crawler dedicado por sindicato | Monitoramento genérico cobre o fluxo |
 
-## O que foi implementado nesta execução
+## Como operar (demo)
 
-1. Auditoria → `docs/CURRENT_STATE.md`
-2. RBAC completo nos módulos restantes
-3. Sindicatos GET/PATCH/DELETE; fontes PATCH (enable)
-4. Busca documental + UI `/documentos`
-5. Alertas de vigência (`scan-expiring`) + e-mail automático WARNING/CRITICAL
-6. Tarefas automáticas de revisão (`sync-review`)
-7. Dashboard com pipeline/classes/vigências
-8. Adaptador Mediador HTTP (fetch, bloqueio, fixtures) + ADR 0002
-9. Health check aprofundado
-10. Dockerfiles api/web/worker
-11. Docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT + ADRs
-12. Testes RolesGuard, tenant-scope, search ranking, mediador, alerts e-mail
-13. Rate limit de login + validação de FKs cross-tenant (alerts/tasks/sources)
-14. Monitoramento API→fila (sem scrape duplicado)
-15. Testes integração multi-tenant (Prisma + Auth/guards)
-16. Migration baseline Prisma + pgvector opcional + GitHub Actions CI + e2e smoke
-17. Checklist de revisão documental + `POST /documents/:id/review`
-18. Motor de impacto em folha (`GET /payroll-impact/comparisons/:id`) + UI no comparador
-19. Notificações SMTP opcionais (`POST /notifications/alerts/email`)
-20. Login multi-tenant por `tenantSlug` + rate limit Redis (fallback memória); UI e e2e smoke
-21. OCR opcional (detecção + pdftoppm/tesseract); ADR 0004; badge na UI documental
-22. Observabilidade leve (requestId, metrics, Sentry opt) + retry Mediador; ADR 0005
-23. Webhooks de alerta + gate/fixture Mediador; ADR 0006
-24. Web Push VAPID (subscribe + fan-out); ADR 0007
-25. Preferências de notificação por usuário; ADR 0008
-26. OpenTelemetry lite (traceparent + OTLP JSON); ADR 0009
-27. Mediador stealth/browser opcional + gate Redis + e2e isolation; ADR 0010
-28. A11y leve em `/alertas` (live region, labels, reduced-motion) + notas Playwright no Dockerfile worker
-
-## ALTERAÇÕES GERADAS PELO FEEDBACK DE USUÁRIO
-
-**Feedback:** `docs/USER_FEEDBACK_001.md`
-
-### O que mudou
-- Prioridade de produto: descobrir/monitorar/alertar/prazos/impacto acima de diff técnico e busca sofisticada.
-- Dashboard reorientado para “O que exige atenção hoje”.
-- Comparação permanece no backend; UX enfatiza “principais mudanças” / resumo operacional.
-
-### O que foi preservado
-- Pipeline 3A–3V (storage→parse→cláusulas→promote→RAG→auth→OCR→observabilidade→Mediador).
-- Modelos e APIs de Company/Union/Source/Instrument/Alerts/Tasks/Comparisons/RAG.
-
-### O que foi ajustado
-- `CompanyUnion` estendido com `status`, `confidence`, validação e auditoria.
-- `CollectiveInstrument.operationalSummary`.
-- Home, nav, detalhe de sindicato/empresa/instrumento.
-
-### O que foi implementado (P0)
-- Matching sindical assistido com score explicável
-- Vigilância Sindical + cobertura da carteira
-- Scan de divergência Mediador × sindicato (`SOURCE_DIVERGENCE`)
-- `DetectedDeadline` + alertas `CRITICAL_DEADLINE`
-- Resumo operacional estruturado
-- Empresas potencialmente impactadas
-- Migration `20260910180000_feedback_p0_union_deadlines`
-- Testes unitários de match/cobertura/prazos/resumo
-
-### O que foi rebaixado
-- Diff técnico como feature principal de UX
-- Busca por palavra-chave como prioridade
-
-### O que continua pendente
-- Import CSV/XLSX de vínculos
-- Catálogo nacional de sindicatos
-- Funcionários/cargos/salários e integrações de folha (P2)
-- Divergência mais robusta (registro Mediador oficial)
-
-## Arquitetura final
-
-Ver `docs/ARCHITECTURE.md`. Filas: `source-monitoring`, `document-download`, `document-parse`. Storage S3-compatible. RAG com evidência + boost pgvector opcional.
-
-## Migrations
-
-- Baseline: `packages/database/prisma/migrations/20260910120000_init`
-- pgvector: `20260910140000_pgvector_embeddings` (exige imagem `pgvector/pgvector:pg16`)
-- Deploy: `pnpm db:migrate:deploy` (também no GitHub Actions)
-
-## Endpoints novos / estendidos
-
-- `GET/PATCH/DELETE /unions/:id`
-- `GET/PATCH /sources/:id`
-- `GET /documents/search?q=`
-- `POST /alerts/scan-expiring` (retorna `notified`)
-- `POST /tasks/sync-review`
-- `POST /documents/:id/review`
-- `GET /payroll-impact/comparisons/:comparisonId`
-- `POST /notifications/alerts/email`
-- `POST /auth/login` com `tenantSlug?` (409 se ambíguo)
-- Health com checks database/redis (`GET /health`)
-
-## Workers / filas
-
-API de monitoramento **enfileira** `check-source`; scrape + Mediador só no worker.
-
-## IA
-
-Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvector dual-write/boost quando extensão disponível.
-
-## Testes
-
-- API: unit + integration multi-tenant + alerts notify + payroll impact + mail skip
-- Worker: Mediador + pipeline specs
-- `pnpm typecheck` / `pnpm build` / CI quality + e2e smoke
-
-## Bugs encontrados e corrigidos
-
-- Script root `typecheck` inválido / quebrado no package database
-- Worker test script omitia `mime.spec.ts` / `intelligence.spec.ts`
-- Scrape duplicado API×worker (API passou a apenas enfileirar)
-
-## O QUE AINDA NÃO ESTÁ 100% PRONTO
-
-- Rate limit / gate Mediador em multi-região (há Redis por ambiente)
-- Mediador CAPTCHA real (browser opcional; BLOCKED sem contornar)
-- pgvector em volumes Postgres antigos sem a extensão (recriar via compose)
-- OCR sem binários no host de desenvolvimento (detecção + needsReview ainda funcionam)
-- Build/push de imagens Docker em registry
-- UX polish / acessibilidade formal
-- OTel SDK completo / auto-instrumentation (há tracer lite + OTLP)
-
-## Riscos
-
-- Coletor HTML genérico + Mediador falham em sites anti-bot
-- Embeddings locais ≠ qualidade de modelos neurais
-- URLs assinadas dependem de clock/credenciais storage
-- Rate limit de login é por processo (réplicas precisam Redis compartilhado)
-- Monitoramento manual depende do worker estar ativo
-- Impacto em folha é qualitativo — não substitui cálculo oficial
-
-## Dependências externas
-
-- Postgres (preferir `pgvector/pgvector:pg16`), Redis, MinIO
-- Opcional: `OPENAI_API_KEY`, `SMTP_*` / `NOTIFY_EMAILS`
-- Fontes públicas (Mediador/sindicatos) sujeitas a disponibilidade legal/técnica
-
-## Instruções de execução
-
-Ver `docs/OPERATIONS.md` e `README.md`.
-
-## Instruções de deploy
-
-1. Provisionar Postgres (pgvector)/Redis/S3
-2. Definir secrets (`JWT_SECRET`, storage keys; SMTP opcional)
-3. `pnpm db:generate` + `pnpm db:migrate:deploy`
-4. Build imagens (`apps/*/Dockerfile`, `services/worker/Dockerfile`)
-5. Subir api + web + worker; health check
-
-## Próximos passos
-
-1. Validar Mediador+Playwright em staging com fonte real (política/legal)
-2. OTel SDK completo (opcional)
-3. Publicar imagens no registry
+- Login: `owner@demo.cct` / `Demo@123456` (tenant `escritorio-demo`)
+- Moderador rede: `moderator@demo.cct` / `Demo@123456`
+- Qualidade: `pnpm test && pnpm typecheck && pnpm build`

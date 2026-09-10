@@ -1,50 +1,38 @@
-# Roadmap — CCT Intelligence (reordenado pelo feedback 001 + Base Colaborativa)
+# Roadmap — CCT Intelligence (fechamento do núcleo)
 
 Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLOCKED**
 
-## P0 — Prioridade máxima (risco de passar despercebido)
+## P0 — Prioridade máxima
 
 | # | Tema | Status |
 |---|---|---|
-| 1 | Empresas (CRUD) | DONE_NEEDS_TESTS (import CSV) |
-| 2 | Sindicatos (base + detalhe) | DONE_NEEDS_TESTS |
-| 3 | Vínculo sindical assistido | DONE_NEEDS_TESTS |
-| 4 | Mediador real | DONE_NEEDS_TESTS (CAPTCHA BLOCKED) |
-| 5 | Monitoramento sites sindicais | DONE_NEEDS_TESTS |
-| 6 | Vigilância Sindical / cobertura | DONE_NEEDS_TESTS |
-| 7 | Detecção novos instrumentos | DONE_NEEDS_TESTS |
-| 8 | Resumo estruturado operacional | DONE_NEEDS_TESTS |
-| 9 | Extração de prazos | DONE_NEEDS_TESTS |
-| 10 | Alertas de publicação | DONE_NEEDS_TESTS |
-| 11 | Alertas de prazo | DONE_NEEDS_TESTS |
-| 12 | Relação sindicato → empresas | DONE_NEEDS_TESTS |
-| 13 | Empresas potencialmente impactadas | DONE_NEEDS_TESTS |
-| **13b** | **Base / Rede Colaborativa de CCTs** | **DONE_NEEDS_TESTS** |
+| 1–13b | Vigilância, vínculos, Mediador, prazos, Base Colaborativa, etc. | DONE_NEEDS_TESTS |
+| 4 | Mediador CAPTCHA real | BLOCKED (browser opcional; sem contornar desafio) |
 
 ## P1 — Diferenciais
 
 | # | Tema | Status |
 |---|---|---|
-| 14 | IA documental com evidência | DONE_NEEDS_TESTS |
-| 15 | Divergência Mediador × sindicato | DONE_NEEDS_TESTS (heurística) |
-| 16 | Histórico / auditoria | DONE_NEEDS_TESTS |
-| 17 | Comparação interna → principais mudanças | DONE_NEEDS_TESTS |
-| 18 | Import CSV vínculos | DONE_NEEDS_TESTS |
-| 19 | Busca documental | DONE_NEEDS_TESTS (secundária) |
-| 19b | Match oficial avançado (metadados/similaridade além de hash) | DONE_NEEDS_TESTS |
-| 19c | Papel MODERATOR cross-tenant | DONE_NEEDS_TESTS |
+| 14–19c | RAG, divergência, auditoria, CSV, match oficial, MODERATOR | DONE_NEEDS_TESTS |
 
-## P2 — Expansão
+## P2 — Expansão (Fase 6–7)
 
 | # | Tema | Status |
 |---|---|---|
-| 20 | Funcionários / cargos / salários | NOT_STARTED |
-| 21 | Impacto em folha oficial | PARTIAL (heurístico existe) |
+| 20 | Funcionários / cargos / salários | DONE_NEEDS_TESTS |
+| 21 | Impacto em folha (piso × colaboradores) | DONE_NEEDS_TESTS |
 | 22 | Tarefas automáticas | DONE_NEEDS_TESTS |
-| 23 | Integrações folha / ONVIO / Domínio | NOT_STARTED |
+| 23 | Integrações ONVIO / Domínio / Alterdata | BLOCKED (framework + intenção; sem sync fake) |
 
-## Roadmap legado (pipeline 0–23)
+## Fora de escopo / documentado
 
-Preservado: storage, parse, classificação, cláusulas, validação, RAG, observabilidade, auth multi-tenant, OCR opt, push/prefs, OTel lite, Mediador stealth/browser. Ver `docs/PHASE_3.md` e commits anteriores.
+- Crawlers sindicais **específicos por sindicato** (há monitoramento genérico de sites)
+- Billing SaaS / planos
+- Sync real de ERP sem API/credenciais
 
-Base colaborativa: ver `docs/COLLABORATIVE_NETWORK.md`.
+## Docs
+
+- `PHASE_6_PAYROLL.md`
+- `PHASE_7_INTEGRATIONS.md`
+- `COLLABORATIVE_NETWORK.md`
+- `IMPORT_CSV.md`

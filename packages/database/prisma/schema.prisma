@@ -119,6 +119,8 @@ model Tenant {
   collaborativeContributions CollaborativeContribution[]
   collaborativePublications CollaborativePublication[]
   documentRequests DocumentRequest[]
+  employees Employee[]
+  integrationConnections IntegrationConnection[]
 }
 
 model User {
@@ -164,6 +166,7 @@ model Company {
   applications    InstrumentApplication[]
   tasks           Task[]
   alerts          Alert[]
+  employees       Employee[]
 
   @@unique([tenantId, cnpj])
   @@index([tenantId])
@@ -843,3 +846,69 @@ model DocumentRequest {
   @@index([groupKey, status])
   @@index([unionId, status])
 }
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  LEAVE
+}
+
+/// Colaborador com minimização de PII (sem CPF obrigatório; chave externa opcional).
+model Employee {
+  id              String         @id @default(cuid())
+  tenantId        String
+  companyId       String
+  externalId      String?
+  displayName     String
+  jobTitle        String?
+  baseSalaryCents Int?
+  admissionDate   DateTime?
+  weeklyHours     Float?
+  status          EmployeeStatus @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, companyId, externalId])
+  @@index([tenantId, companyId, status])
+  @@index([tenantId, jobTitle])
+}
+
+enum IntegrationProvider {
+  ONVIO
+  DOMINIO
+  ALTERDATA
+  OTHER
+}
+
+enum IntegrationConnectionStatus {
+  DISCONNECTED
+  CONFIGURED
+  ERROR
+  UNSUPPORTED
+}
+
+/// Conexões de integração — sem sync fake; status documenta disponibilidade real.
+model IntegrationConnection {
+  id           String                       @id @default(cuid())
+  tenantId     String
+  provider     IntegrationProvider
+  displayName  String
+  status       IntegrationConnectionStatus  @default(UNSUPPORTED)
+  /// Metadados não secretos (ambiente, empresa ERP id). Segredos ficam em env/secret store.
+  config       Json?
+  lastError    String?
+  lastSyncAt   DateTime?
+  notes        String?
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider])
+  @@index([tenantId, status])
+}
+

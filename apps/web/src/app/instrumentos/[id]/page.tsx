@@ -66,6 +66,7 @@ export default function InstrumentoDetalhePage() {
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState<any>(null);
   const [impacted, setImpacted] = useState<any>(null);
+  const [floorImpact, setFloorImpact] = useState<any>(null);
 
   const load = async () => {
     try {
@@ -156,6 +157,18 @@ export default function InstrumentoDetalhePage() {
     }
   };
 
+  const loadFloorImpact = async () => {
+    setBusy(true);
+    try {
+      const r = await api(`/payroll-impact/instruments/${params.id}/floor`);
+      setFloorImpact(r);
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao estimar impacto de piso');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Shell title="Instrumento">
       <div className="page">
@@ -184,6 +197,9 @@ export default function InstrumentoDetalhePage() {
               </button>
               <button className="secondary" type="button" disabled={busy} onClick={() => void loadImpacted()}>
                 Empresas impactadas
+              </button>
+              <button className="secondary" type="button" disabled={busy} onClick={() => void loadFloorImpact()}>
+                Impacto piso × folha
               </button>
               {item.sourceUrl ? (
                 <a className="secondary" href={item.sourceUrl} target="_blank" rel="noreferrer">
@@ -236,6 +252,34 @@ export default function InstrumentoDetalhePage() {
                       <p>
                         {c.linkType || '—'} · {c.linkStatus || c.source} · conf.{' '}
                         {c.confidence != null ? `${Math.round(c.confidence * 100)}%` : '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {floorImpact ? (
+              <section className="panel" style={{ marginBottom: 14 }}>
+                <div className="panelhead">
+                  <div>
+                    <span className="eyebrow">FOLHA · ESTIMATIVA</span>
+                    <h2>
+                      {floorImpact.impactedCount ?? 0} colaborador(es) abaixo do piso
+                      {floorImpact.floorBrl != null ? ` (R$ ${floorImpact.floorBrl})` : ''}
+                    </h2>
+                  </div>
+                </div>
+                <div style={{ padding: 14, display: 'grid', gap: 8 }}>
+                  <p className="feedmeta">{floorImpact.disclaimer || floorImpact.message}</p>
+                  {(floorImpact.impacted || []).map((e: any) => (
+                    <div key={e.employeeId} className="attn">
+                      <strong>
+                        {e.displayName}
+                        {e.jobTitle ? ` · ${e.jobTitle}` : ''}
+                      </strong>
+                      <p>
+                        atual R$ {(e.currentSalaryCents / 100).toFixed(2)} → + R$ {e.deltaBrl}
                       </p>
                     </div>
                   ))}
