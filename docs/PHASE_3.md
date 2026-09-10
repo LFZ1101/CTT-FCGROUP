@@ -145,8 +145,18 @@
 - Adaptador Mediador com fetch, detecção de bloqueio, fixtures e ADR 0002
 - pgvector opcional (`embeddingVec`), dual-write, boost no RAG; compose/CI com `pgvector/pgvector:pg16`; ADR 0003
 
+## 3N — Impacto em folha + notificações e-mail (entregue)
+
+- Motor heurístico `payroll-heuristic-v1` + `GET /payroll-impact/comparisons/:comparisonId`
+- Painel de fatores na UI `/instrumentos/comparar`
+- SMTP opcional (`MailService`) + `POST /notifications/alerts/email`
+- `scan-expiring` notifica automaticamente WARNING/CRITICAL (não falha o scan se SMTP cair)
+- Botão “E-mail” na central de alertas
+
 ## Próximo
 
-- Motor de impacto em folha
-- Notificações e-mail
-- E2E HTTP bearer completo em Nest compilado (smoke já cobre login)
+- Mediador staging real / anti-bot
+- OCR PDFs escaneados
+- Rate limit Redis em cluster
+- Observabilidade OTel/Sentry
+- Login por slug de tenant

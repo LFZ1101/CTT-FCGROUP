@@ -10,8 +10,8 @@
 | Isolamento multi-tenant + migrations + CI + revisão documental | DONE |
 | Mediador/MTE (HTTP + parsing + bloqueio) | DONE (live DNS pode falhar no sandbox) |
 | pgvector + embeddings + RAG evidência | DONE (opcional; fallback JSON) |
-| Impacto em folha | DONE (heurística v1) |
-| Notificações e-mail | DONE (SMTP opcional; skip se não configurado) |
+| Impacto em folha | DONE (heurística v1 + UI no comparador) |
+| Notificações e-mail | DONE (SMTP opcional; scan auto WARNING/CRITICAL) |
 
 ## Tabela mestre (resumo)
 
@@ -23,12 +23,12 @@
 | Revisão documental | DONE |
 | Mediador adapter | DONE |
 | RAG híbrido + pgvector boost | DONE |
-| Payroll impact | DONE_NEEDS_TESTS (unit ok) |
-| E-mail SMTP | DONE (skip sem SMTP_*) |
+| Payroll impact API + UI | DONE |
+| E-mail SMTP + scan auto | DONE (skip sem SMTP_*) |
 
 ## Limitações
 
 - Portal Mediador pode bloquear (CAPTCHA/JS); check grava `BLOCKED`.
-- pgvector não está no Postgres alpine local antigo — usar compose/CI com imagem pgvector.
+- pgvector não está no Postgres alpine local antigo — recriar volume com compose/CI (`pgvector/pgvector:pg16`).
 - E-mail não envia sem `SMTP_HOST`/`SMTP_FROM`.
 - Impacto em folha é qualitativo/evidência — não calcula folha oficial.

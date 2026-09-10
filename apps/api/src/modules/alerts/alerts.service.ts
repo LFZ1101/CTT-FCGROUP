@@ -1,15 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { TenantOwnershipService } from '../../common/tenancy/tenant-ownership.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateAlertDto } from './dto/alert.dto';
 
 const EXPIRY_WINDOW_DAYS = 60;
 
 @Injectable()
 export class AlertsService {
+  private readonly logger = new Logger(AlertsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly ownership: TenantOwnershipService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   list(tenantId: string) {
@@ -49,6 +53,7 @@ export class AlertsService {
     });
 
     let created = 0;
+    let notified = 0;
     for (const instrument of instruments) {
       const existing = await this.prisma.alert.findFirst({
         where: {
@@ -66,7 +71,7 @@ export class AlertsService {
       );
       const severity = daysLeft <= 15 ? 'CRITICAL' : daysLeft <= 30 ? 'WARNING' : 'INFO';
 
-      await this.prisma.alert.create({
+      const alert = await this.prisma.alert.create({
         data: {
           tenantId,
           instrumentId: instrument.id,
@@ -77,8 +82,19 @@ export class AlertsService {
         },
       });
       created++;
+
+      if (severity === 'WARNING' || severity === 'CRITICAL') {
+        try {
+          const result = await this.notifications.notifyAlert(tenantId, alert.id);
+          if (result.sent) notified++;
+        } catch (err) {
+          this.logger.warn(
+            `Falha ao notificar alerta ${alert.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
     }
 
-    return { scanned: instruments.length, created, withinDays };
+    return { scanned: instruments.length, created, notified, withinDays };
   }
 }

@@ -42,6 +42,8 @@
 | Worker `package.json` test glob | `**` não expandia specs na raiz de `src/` |
 | Shell nav + páginas alertas/tarefas/fontes/home | Integrar novas APIs; lista `/documentos` |
 | Docs CURRENT_STATE/AUDIT/PHASE_3/README | Refletir estado REAL |
+| `AlertsService.scanExpiringInstruments` | Disparar e-mail em WARNING/CRITICAL |
+| UI `/instrumentos/comparar` | Painel de impacto em folha pós-comparação |
 
 ## O que foi implementado nesta execução
 
@@ -49,37 +51,42 @@
 2. RBAC completo nos módulos restantes
 3. Sindicatos GET/PATCH/DELETE; fontes PATCH (enable)
 4. Busca documental + UI `/documentos`
-5. Alertas de vigência (`scan-expiring`)
+5. Alertas de vigência (`scan-expiring`) + e-mail automático WARNING/CRITICAL
 6. Tarefas automáticas de revisão (`sync-review`)
 7. Dashboard com pipeline/classes/vigências
-8. Adaptador Mediador heurístico + testes
+8. Adaptador Mediador HTTP (fetch, bloqueio, fixtures) + ADR 0002
 9. Health check aprofundado
 10. Dockerfiles api/web/worker
-11. Docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT + ADR 0001
-12. Testes RolesGuard, tenant-scope, search ranking, mediador
+11. Docs ARCHITECTURE/API/SECURITY/OPERATIONS/ROADMAP/PRODUCT + ADRs
+12. Testes RolesGuard, tenant-scope, search ranking, mediador, alerts e-mail
 13. Rate limit de login + validação de FKs cross-tenant (alerts/tasks/sources)
 14. Monitoramento API→fila (sem scrape duplicado)
-15. Testes integração multi-tenant (Postgres)
-16. Migration baseline Prisma + GitHub Actions CI
+15. Testes integração multi-tenant (Prisma + Auth/guards)
+16. Migration baseline Prisma + pgvector opcional + GitHub Actions CI + e2e smoke
 17. Checklist de revisão documental + `POST /documents/:id/review`
+18. Motor de impacto em folha (`GET /payroll-impact/comparisons/:id`) + UI no comparador
+19. Notificações SMTP opcionais (`POST /notifications/alerts/email`)
 
 ## Arquitetura final
 
-Ver `docs/ARCHITECTURE.md`. Filas: `source-monitoring`, `document-download`, `document-parse`. Storage S3-compatible. RAG com evidência.
+Ver `docs/ARCHITECTURE.md`. Filas: `source-monitoring`, `document-download`, `document-parse`. Storage S3-compatible. RAG com evidência + boost pgvector opcional.
 
 ## Migrations
 
-Baseline versionada: `packages/database/prisma/migrations/20260910120000_init`.  
-Deploy: `pnpm db:migrate:deploy` (também no GitHub Actions).
+- Baseline: `packages/database/prisma/migrations/20260910120000_init`
+- pgvector: `20260910140000_pgvector_embeddings` (exige imagem `pgvector/pgvector:pg16`)
+- Deploy: `pnpm db:migrate:deploy` (também no GitHub Actions)
 
 ## Endpoints novos / estendidos
 
 - `GET/PATCH/DELETE /unions/:id`
 - `GET/PATCH /sources/:id`
 - `GET /documents/search?q=`
-- `POST /alerts/scan-expiring`
+- `POST /alerts/scan-expiring` (retorna `notified`)
 - `POST /tasks/sync-review`
 - `POST /documents/:id/review`
+- `GET /payroll-impact/comparisons/:comparisonId`
+- `POST /notifications/alerts/email`
 - Health com checks database/redis (`GET /health`)
 
 ## Workers / filas
@@ -88,13 +95,13 @@ API de monitoramento **enfileira** `check-source`; scrape + Mediador só no work
 
 ## IA
 
-Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG.
+Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG. pgvector dual-write/boost quando extensão disponível.
 
 ## Testes
 
-- API: 40 testes (unit + integration multi-tenant)
-- Worker: 15 testes
-- `pnpm typecheck` / `pnpm build` OK
+- API: unit + integration multi-tenant + alerts notify + payroll impact + mail skip
+- Worker: Mediador + pipeline specs
+- `pnpm typecheck` / `pnpm build` / CI quality + e2e smoke
 
 ## Bugs encontrados e corrigidos
 
@@ -104,30 +111,30 @@ Preservada (hashing-v1 + OpenAI opcional). Busca lexical separada do RAG.
 
 ## O QUE AINDA NÃO ESTÁ 100% PRONTO
 
-- E2E HTTP com JWT cross-tenant (há integration Prisma)
+- E2E HTTP com JWT cross-tenant completo (há integration Prisma + smoke login)
 - Rate limit compartilhado via Redis em cluster
-- Mediador contra portal real (JS/CAPTCHA)
-- pgvector nativo
-- Notificações email/push
-- Impacto em folha de pagamento
+- Mediador contra portal real (JS/CAPTCHA) — adaptador trata BLOCKED
+- pgvector em volumes Postgres antigos sem a extensão (recriar via compose)
 - OCR para PDFs escaneados
 - Build/push de imagens Docker em registry
 - UX polish / acessibilidade formal
 - Observabilidade OTel/Sentry
 - Login multi-tenant por slug / e-mail global único
+- Push notifications (só e-mail SMTP)
 
 ## Riscos
 
-- Coletor HTML genérico + Mediador heurístico falham em sites anti-bot
+- Coletor HTML genérico + Mediador falham em sites anti-bot
 - Embeddings locais ≠ qualidade de modelos neurais
 - URLs assinadas dependem de clock/credenciais storage
 - Rate limit de login é por processo (réplicas precisam Redis compartilhado)
 - Monitoramento manual depende do worker estar ativo
+- Impacto em folha é qualitativo — não substitui cálculo oficial
 
 ## Dependências externas
 
-- Postgres, Redis, MinIO
-- Opcional: `OPENAI_API_KEY` para síntese RAG
+- Postgres (preferir `pgvector/pgvector:pg16`), Redis, MinIO
+- Opcional: `OPENAI_API_KEY`, `SMTP_*` / `NOTIFY_EMAILS`
 - Fontes públicas (Mediador/sindicatos) sujeitas a disponibilidade legal/técnica
 
 ## Instruções de execução
@@ -136,16 +143,16 @@ Ver `docs/OPERATIONS.md` e `README.md`.
 
 ## Instruções de deploy
 
-1. Provisionar Postgres/Redis/S3
-2. Definir secrets (`JWT_SECRET`, storage keys)
-3. `pnpm db:generate` + migrate/push
+1. Provisionar Postgres (pgvector)/Redis/S3
+2. Definir secrets (`JWT_SECRET`, storage keys; SMTP opcional)
+3. `pnpm db:generate` + `pnpm db:migrate:deploy`
 4. Build imagens (`apps/*/Dockerfile`, `services/worker/Dockerfile`)
 5. Subir api + web + worker; health check
 
 ## Próximos passos
 
-1. Testes e2e isolamento tenant
-2. Prisma migrate deploy em CI
-3. Rate limit + hardening produção
-4. Validar adaptador Mediador em staging com fonte real
-5. Notificações e impacto em folha (roadmap produto)
+1. Validar Mediador em staging com fonte real
+2. Rate limit Redis em cluster
+3. OCR / PDFs escaneados
+4. Observabilidade (OTel/Sentry)
+5. Login por slug de tenant

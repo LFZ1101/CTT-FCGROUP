@@ -53,6 +53,40 @@ type Comparison = {
   createdAt?: string;
 };
 
+type PayrollFactor = {
+  code: string;
+  label: string;
+  direction: 'INCREASE' | 'DECREASE' | 'NEUTRAL' | 'UNKNOWN';
+  confidence: number;
+  changeType: string;
+  notes: string;
+  numericDelta?: {
+    previousValue: number | null;
+    currentValue: number | null;
+    unit: 'BRL' | 'PERCENT' | 'HOURS' | 'UNKNOWN';
+  };
+  evidence: {
+    clauseNumber?: string | null;
+    title?: string | null;
+    previousSnippet?: string | null;
+    currentSnippet?: string | null;
+  };
+};
+
+type PayrollImpact = {
+  comparisonId: string;
+  modelVersion: string;
+  disclaimer: string;
+  summary: {
+    totalFactors: number;
+    increases: number;
+    decreases: number;
+    unknowns: number;
+    payrollRelevantChanges: number;
+  };
+  factors: PayrollFactor[];
+};
+
 const CHANGE_LABEL: Record<string, string> = {
   UNCHANGED: 'Sem alteração',
   MODIFIED: 'Modificada',
@@ -62,6 +96,22 @@ const CHANGE_LABEL: Record<string, string> = {
   MOVED: 'Movida',
 };
 
+const DIRECTION_LABEL: Record<PayrollFactor['direction'], string> = {
+  INCREASE: 'Aumento',
+  DECREASE: 'Redução',
+  NEUTRAL: 'Neutro',
+  UNKNOWN: 'Indefinido',
+};
+
+function formatDelta(factor: PayrollFactor) {
+  const d = factor.numericDelta;
+  if (!d || (d.previousValue == null && d.currentValue == null)) return '—';
+  const unit =
+    d.unit === 'BRL' ? 'R$' : d.unit === 'PERCENT' ? '%' : d.unit === 'HOURS' ? 'h' : '';
+  const fmt = (n: number | null) => (n == null ? '?' : unit === 'R$' ? n.toLocaleString('pt-BR') : String(n));
+  return `${unit === 'R$' ? 'R$ ' : ''}${fmt(d.previousValue ?? null)} → ${unit === 'R$' ? 'R$ ' : ''}${fmt(d.currentValue ?? null)}${unit === '%' || unit === 'h' ? ` ${unit}` : ''}`;
+}
+
 function CompararInstrumentosInner() {
   const search = useSearchParams();
   const [instruments, setInstruments] = useState<Instrument[]>([]);
@@ -69,9 +119,19 @@ function CompararInstrumentosInner() {
   const [currentId, setCurrentId] = useState(search.get('current') || '');
   const [history, setHistory] = useState<Comparison[]>([]);
   const [result, setResult] = useState<Comparison | null>(null);
+  const [payroll, setPayroll] = useState<PayrollImpact | null>(null);
   const [filter, setFilter] = useState<string>('ALL');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const loadPayroll = async (comparisonId: string) => {
+    try {
+      const data = await api<PayrollImpact>(`/payroll-impact/comparisons/${comparisonId}`);
+      setPayroll(data);
+    } catch {
+      setPayroll(null);
+    }
+  };
 
   const load = async () => {
     try {
@@ -101,6 +161,7 @@ function CompararInstrumentosInner() {
     }
     setBusy(true);
     setError(null);
+    setPayroll(null);
     try {
       const created = await api<Comparison>('/comparisons', {
         method: 'POST',
@@ -111,6 +172,7 @@ function CompararInstrumentosInner() {
       });
       const full = await api<Comparison>(`/comparisons/${created.id}`);
       setResult(full);
+      await loadPayroll(full.id);
       await load();
     } catch (err: any) {
       setError(err?.message || 'Falha ao comparar');
@@ -121,11 +183,13 @@ function CompararInstrumentosInner() {
 
   const openHistory = async (id: string) => {
     setBusy(true);
+    setPayroll(null);
     try {
       const full = await api<Comparison>(`/comparisons/${id}`);
       setResult(full);
       setPreviousId(full.previousInstrument?.id || '');
       setCurrentId(full.currentInstrument?.id || '');
+      await loadPayroll(full.id);
     } catch (err: any) {
       setError(err?.message || 'Falha ao abrir comparação');
     } finally {
@@ -264,6 +328,83 @@ function CompararInstrumentosInner() {
                   <tr>
                     <td colSpan={5} className="empty">
                       Nenhuma cláusula neste filtro.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      {result && payroll ? (
+        <section className="panel" style={{ marginBottom: 14 }}>
+          <div className="panelhead">
+            <div>
+              <span className="eyebrow">IMPACTO EM FOLHA</span>
+              <h2>Fatores heurísticos ({payroll.modelVersion})</h2>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span className="badge">{payroll.summary.totalFactors} fatores</span>
+              <span className="badge warn">{payroll.summary.increases} ↑</span>
+              <span className="badge ok">{payroll.summary.decreases} ↓</span>
+              <span className="badge">{payroll.summary.unknowns} ?</span>
+            </div>
+          </div>
+          <p className="feedmeta" style={{ padding: '0 14px 8px' }}>
+            {payroll.disclaimer}
+          </p>
+          <div className="tablewrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Fator</th>
+                  <th>Direção</th>
+                  <th>Confiança</th>
+                  <th>Delta</th>
+                  <th>Evidência</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payroll.factors.map((f, idx) => (
+                  <tr key={`${f.code}-${idx}`}>
+                    <td>
+                      <b>{f.label}</b>
+                      <div style={{ fontSize: 12 }}>
+                        {CHANGE_LABEL[f.changeType] || f.changeType}
+                        {f.evidence.clauseNumber ? ` · cl. ${f.evidence.clauseNumber}` : ''}
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          f.direction === 'INCREASE'
+                            ? 'warn'
+                            : f.direction === 'DECREASE'
+                              ? 'ok'
+                              : ''
+                        }`}
+                      >
+                        {DIRECTION_LABEL[f.direction]}
+                      </span>
+                    </td>
+                    <td>{Math.round(f.confidence * 100)}%</td>
+                    <td style={{ fontSize: 12 }}>{formatDelta(f)}</td>
+                    <td style={{ fontSize: 12 }}>
+                      <div>{f.evidence.title || '—'}</div>
+                      <div style={{ opacity: 0.8 }}>
+                        {(f.evidence.currentSnippet || f.evidence.previousSnippet || f.notes || '').slice(
+                          0,
+                          160,
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!payroll.factors.length ? (
+                  <tr>
+                    <td colSpan={5} className="empty">
+                      Nenhum fator de folha detectado nesta comparação.
                     </td>
                   </tr>
                 ) : null}

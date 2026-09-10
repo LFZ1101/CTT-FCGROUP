@@ -8,6 +8,7 @@ import { api } from '../../lib/api';
 export default function Alertas() {
   const [rows, setRows] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
   const load = () => api<any[]>('/alerts').then(setRows).catch(() => {});
   useEffect(() => {
     void load();
@@ -19,12 +20,35 @@ export default function Alertas() {
   }
 
   async function scanExpiring() {
-    const r = await api<{ scanned: number; created: number }>('/alerts/scan-expiring', {
+    const r = await api<{ scanned: number; created: number; notified?: number }>('/alerts/scan-expiring', {
       method: 'POST',
       body: '{}',
     });
-    setMsg(`Varredura: ${r.scanned} instrumentos na janela, ${r.created} alerta(s) novo(s).`);
+    setMsg(
+      `Varredura: ${r.scanned} instrumentos na janela, ${r.created} alerta(s) novo(s)` +
+        (typeof r.notified === 'number' ? `, ${r.notified} e-mail(s) enviado(s)` : '') +
+        '.',
+    );
     load();
+  }
+
+  async function notifyEmail(id: string) {
+    setBusyId(id);
+    try {
+      const r = await api<{ sent?: boolean; skipped?: boolean; reason?: string }>(
+        '/notifications/alerts/email',
+        {
+          method: 'POST',
+          body: JSON.stringify({ alertId: id }),
+        },
+      );
+      if (r.sent) setMsg(`E-mail enviado para o alerta ${id.slice(0, 8)}…`);
+      else setMsg(`E-mail não enviado (${r.reason || (r.skipped ? 'SMTP/destinatários' : 'falha')}).`);
+    } catch (e: any) {
+      setMsg(e?.message || 'Falha ao notificar por e-mail');
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -33,7 +57,7 @@ export default function Alertas() {
         <PageHeader
           eyebrow="Risco e mudanças"
           title="Central de alertas"
-          description="Fila para novas publicações, divergências, vigências e impactos detectados."
+          description="Fila para novas publicações, divergências, vigências e impactos detectados. WARNING/CRITICAL disparam e-mail automático no scan (se SMTP estiver configurado)."
           action={
             <button className="primary" onClick={() => void scanExpiring()}>
               Verificar vigências
@@ -57,7 +81,7 @@ export default function Alertas() {
                 </span>
               </td>
               <td>{new Date(x.createdAt).toLocaleString('pt-BR')}</td>
-              <td>
+              <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {x.readAt ? (
                   <span className="badge ok">Lido</span>
                 ) : (
@@ -65,6 +89,13 @@ export default function Alertas() {
                     Marcar como lido
                   </button>
                 )}
+                <button
+                  className="secondary"
+                  disabled={busyId === x.id}
+                  onClick={() => void notifyEmail(x.id)}
+                >
+                  {busyId === x.id ? 'Enviando…' : 'E-mail'}
+                </button>
               </td>
             </tr>
           ))}

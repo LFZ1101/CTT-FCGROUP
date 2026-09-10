@@ -17,12 +17,12 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 | 10 | Comparação instrumentos | DONE_NEEDS_TESTS |
 | 11 | Compatibilidade empresa×instrumento | DONE_NEEDS_TESTS |
 | 12 | Validação humana | DONE_NEEDS_TESTS |
-| 13 | Alertas inteligentes | PARTIAL (vigência; sem notificação externa) |
+| 13 | Alertas inteligentes | DONE_NEEDS_TESTS (vigência + e-mail WARNING/CRITICAL) |
 | 14 | Tarefas automáticas | DONE_NEEDS_TESTS (sync review) |
-| 15 | RAG / IA documental | DONE_NEEDS_TESTS |
+| 15 | RAG / IA documental | DONE_NEEDS_TESTS (híbrido + pgvector opcional) |
 | 16 | Busca documental | DONE_NEEDS_TESTS |
 | 17 | Dashboard enriquecido | DONE_NEEDS_TESTS |
-| 18 | UX/UI polish | PARTIAL |
+| 18 | UX/UI polish | PARTIAL (painel folha no comparador) |
 | 19 | Observabilidade | DONE_NEEDS_TESTS (health) |
 | 20 | Segurança avançada | DONE_NEEDS_TESTS (RBAC + rate limit + FK) |
 | 21 | Testes completos | PARTIAL → integration multi-tenant feito |
@@ -32,8 +32,8 @@ Estados: **DONE** | **DONE_NEEDS_TESTS** | **PARTIAL** | **NOT_STARTED** | **BLO
 ## Próximos (não bloqueantes)
 
 - Adaptador Mediador em produção real (anti-bot/JS)
-- pgvector nativo
-- Notificações email
-- Impacto em folha
-- Migrations versionadas em CI
-- E2E multi-tenant HTTP
+- OCR para PDFs escaneados
+- Rate limit Redis em cluster
+- Observabilidade OTel/Sentry
+- Login por slug de tenant
+- Push notifications (além de e-mail)

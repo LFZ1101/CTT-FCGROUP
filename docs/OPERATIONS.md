@@ -32,10 +32,21 @@ Dockerfiles em `apps/api`, `apps/web`, `services/worker` (multi-stage). Infra co
 
 Worker consome `source-monitoring`, `document-download`, `document-parse`. Intervalo de monitor: `MONITOR_INTERVAL_MS`.
 
-## Alertas / tarefas automáticas
+## Alertas / tarefas / e-mail
 
-- `POST /alerts/scan-expiring` — vigência ≤ 60 dias
+- `POST /alerts/scan-expiring` — vigência ≤ 60 dias; WARNING/CRITICAL tentam e-mail automático
+- `POST /notifications/alerts/email` — reenvio manual
 - `POST /tasks/sync-review` — tarefas para `PENDING_REVIEW`
+- SMTP opcional: `SMTP_HOST`, `SMTP_FROM`, `NOTIFY_EMAILS` (ver `.env.example`)
+
+## Impacto em folha
+
+- `GET /payroll-impact/comparisons/:comparisonId` — fatores heurísticos com evidência
+- UI em `/instrumentos/comparar` após resultado/histórico
+
+## Postgres / pgvector
+
+Compose e CI usam `pgvector/pgvector:pg16`. Se o volume local foi criado com `postgres:16-alpine`, a migration `20260910140000_pgvector_embeddings` falha até recriar o volume (`docker compose down -v && docker compose up -d`). Sem a extensão, o RAG continua com embeddings JSON.
 
 ## Backup
 
