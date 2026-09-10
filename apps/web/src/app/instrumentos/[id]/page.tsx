@@ -183,9 +183,17 @@ export default function InstrumentoDetalhePage() {
         ) : (
           <>
             <div className="toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <span className="badge">{item.type}</span>
-              <span className={`badge ${item.status === 'VALIDATED' ? 'ok' : item.status === 'PENDING_REVIEW' ? 'warn' : ''}`}>
-                {item.status === 'PENDING_REVIEW' ? 'Aguardando validação' : item.status}
+              <span className="badge">{item.type === 'CCT' ? 'CCT' : item.type === 'ACT' ? 'ACT' : item.type}</span>
+              <span className={`badge ${item.status === 'VALIDATED' ? 'ok' : item.status === 'PENDING_REVIEW' || item.status === 'DISCOVERED' ? 'warn' : ''}`}>
+                {item.status === 'PENDING_REVIEW'
+                  ? 'Aguardando validação'
+                  : item.status === 'VALIDATED'
+                    ? 'Validado'
+                    : item.status === 'DISCOVERED'
+                      ? 'Descoberto'
+                      : item.status === 'REJECTED'
+                        ? 'Rejeitado'
+                        : item.status}
               </span>
               <span className="badge">{item.clauses?.length || 0} cláusulas</span>
               <a className="secondary" href="/instrumentos">Voltar</a>
@@ -208,14 +216,11 @@ export default function InstrumentoDetalhePage() {
               ) : null}
             </div>
 
-            {(item.clauses?.length || 0) > 0 ? <AskPanel instrumentId={item.id} /> : null}
-            <AuditTrail entity="CollectiveInstrument" entityId={item.id} />
-
             {summary?.items?.length ? (
               <section className="panel" style={{ marginBottom: 14 }}>
                 <div className="panelhead">
                   <div>
-                    <span className="eyebrow">RESUMO OPERACIONAL</span>
+                    <span className="eyebrow">O que mudou / o que revisar</span>
                     <h2>Principais condições com evidência</h2>
                   </div>
                 </div>
@@ -223,11 +228,12 @@ export default function InstrumentoDetalhePage() {
                   {summary.items.map((it: any) => (
                     <div key={it.code} className="attn">
                       <strong>
-                        {it.label}: {it.value || '—'}
+                        {it.label || it.title || it.code}: {it.value || it.summary || '—'}
                       </strong>
                       <p>
-                        p.{it.page ?? '—'} · conf. {Math.round((it.confidence || 0) * 100)}% ·{' '}
-                        {(it.evidence || '').slice(0, 160)}
+                        {it.page != null ? `p.${it.page} · ` : ''}
+                        {it.confidence != null ? `confiança ${Math.round((it.confidence || 0) * 100)}% · ` : ''}
+                        {(it.evidence || it.detail || it.text || '').slice(0, 160)}
                       </p>
                     </div>
                   ))}
@@ -239,7 +245,7 @@ export default function InstrumentoDetalhePage() {
               <section className="panel" style={{ marginBottom: 14 }}>
                 <div className="panelhead">
                   <div>
-                    <span className="eyebrow">IMPACTO</span>
+                    <span className="eyebrow">Empresas impactadas</span>
                     <h2>{impacted.count} empresa(s) potencialmente relacionada(s)</h2>
                   </div>
                 </div>
@@ -263,7 +269,7 @@ export default function InstrumentoDetalhePage() {
               <section className="panel" style={{ marginBottom: 14 }}>
                 <div className="panelhead">
                   <div>
-                    <span className="eyebrow">FOLHA · ESTIMATIVA</span>
+                    <span className="eyebrow">Estimativa de impacto em folha</span>
                     <h2>
                       {floorImpact.impactedCount ?? 0} colaborador(es) abaixo do piso
                       {floorImpact.floorBrl != null ? ` (R$ ${floorImpact.floorBrl})` : ''}
@@ -289,7 +295,7 @@ export default function InstrumentoDetalhePage() {
             <section className="panel" style={{ marginBottom: 14 }}>
               <div className="panelhead">
                 <div>
-                  <span className="eyebrow">METADADOS</span>
+                  <span className="eyebrow">Identificação</span>
                   <h2>Vigência e identificação</h2>
                 </div>
               </div>
@@ -313,7 +319,7 @@ export default function InstrumentoDetalhePage() {
               <section className="panel" style={{ marginBottom: 14 }}>
                 <div className="panelhead">
                   <div>
-                    <span className="eyebrow">DECISÃO</span>
+                    <span className="eyebrow">Decisão humana</span>
                     <h2>Validar ou rejeitar</h2>
                   </div>
                 </div>
@@ -340,7 +346,7 @@ export default function InstrumentoDetalhePage() {
             <section className="panel" style={{ marginBottom: 14 }}>
               <div className="panelhead">
                 <div>
-                  <span className="eyebrow">ENQUADRAMENTO</span>
+                  <span className="eyebrow">Enquadramento</span>
                   <h2>Compatibilidade empresa × instrumento</h2>
                 </div>
                 <button className="secondary" disabled={busy} onClick={suggest}>
@@ -405,7 +411,7 @@ export default function InstrumentoDetalhePage() {
               <section className="panel">
                 <div className="panelhead">
                   <div>
-                    <span className="eyebrow">CLÁUSULAS</span>
+                    <span className="eyebrow">Cláusulas</span>
                     <h2>Conteúdo promovido</h2>
                   </div>
                 </div>
@@ -444,7 +450,7 @@ export default function InstrumentoDetalhePage() {
               <section className="panel">
                 <div className="panelhead">
                   <div>
-                    <span className="eyebrow">ORIGEM / HISTÓRICO</span>
+                    <span className="eyebrow">Origem e histórico</span>
                     <h2>Documentos e validações</h2>
                   </div>
                 </div>
@@ -474,6 +480,27 @@ export default function InstrumentoDetalhePage() {
                 </div>
               </section>
             </div>
+
+            {(item.clauses?.length || 0) > 0 ? (
+              <section className="panel" style={{ marginTop: 14, marginBottom: 14 }}>
+                <div className="panelhead">
+                  <div>
+                    <span className="eyebrow">Perguntar à IA</span>
+                    <h2>Respostas com citação de cláusula e página</h2>
+                  </div>
+                </div>
+                <div style={{ padding: 14 }}>
+                  <AskPanel instrumentId={item.id} />
+                </div>
+              </section>
+            ) : null}
+
+            <details className="tech-details">
+              <summary>Auditoria técnica</summary>
+              <div style={{ paddingTop: 10 }}>
+                <AuditTrail entity="CollectiveInstrument" entityId={item.id} />
+              </div>
+            </details>
           </>
         )}
       </div>

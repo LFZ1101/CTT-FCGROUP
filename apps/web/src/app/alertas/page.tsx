@@ -130,7 +130,7 @@ export default function Alertas() {
         <PageHeader
           eyebrow="Risco e mudanças"
           title="Central de alertas"
-          description="WARNING/CRITICAL disparam canais conforme suas preferências (e-mail, webhook, Web Push)."
+          description="Alertas de atenção e críticos disparam e-mail, webhook ou Web Push conforme suas preferências."
           action={
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button

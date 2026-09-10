@@ -32,9 +32,9 @@ export default function IntegracoesPage() {
     <Shell title="Integrações">
       <div className="page">
         <PageHeader
-          eyebrow="Fase 7"
+          eyebrow="Administração · conectores"
           title="Integrações de folha / ERP"
-          description="Sem sync fake. Enquanto não houver API/credenciais oficiais, use CSV de colaboradores. Aqui você registra interesse e vê limitações."
+          description="Nenhuma sincronização automática é simulada. Enquanto não houver API e credenciais oficiais, use a importação CSV de colaboradores. Aqui você registra interesse e acompanha limitações."
         />
         {msg ? <p className="feedmeta" role="status">{msg}</p> : null}
         <DataTable headers={['Provedor', 'Status', 'Limitação', 'Ação']} empty={!rows.length}>
@@ -44,7 +44,12 @@ export default function IntegracoesPage() {
                 <b>{r.displayName}</b>
               </td>
               <td>
-                <span className="badge warn">{r.connection?.status || r.status}</span>
+                <span className="badge warn">
+                  {String(r.connection?.status || r.status || 'UNSUPPORTED')
+                    .replace('UNSUPPORTED', 'Ainda não conectado')
+                    .replace('CONNECTED', 'Conectado')
+                    .replace('ERROR', 'Falhou')}
+                </span>
               </td>
               <td>{r.limitation}</td>
               <td>

@@ -35,7 +35,7 @@ export default function AuditTrail({
     <section className="panel" style={{ marginBottom: 14 }}>
       <div className="panelhead">
         <div>
-          <span className="eyebrow">AUDITORIA 3J</span>
+          <span className="eyebrow">Histórico de ações</span>
           <h2>Eventos desta entidade</h2>
         </div>
       </div>

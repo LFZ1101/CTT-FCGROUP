@@ -66,7 +66,7 @@ export default function ColaboradoresPage() {
     <Shell title="Colaboradores">
       <div className="page">
         <PageHeader
-          eyebrow="Fase 6 · Folha"
+          eyebrow="Impacto em folha"
           title="Colaboradores"
           description="Cadastro mínimo (sem CPF). Use para estimar impacto de piso salarial. Não altera folha automaticamente."
           action={
