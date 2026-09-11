@@ -6,6 +6,8 @@ import Shell from '../../../components/Shell';
 import PageHeader from '../../../components/PageHeader';
 import { DataTable } from '../../../components/DataTable';
 import { api } from '../../../lib/api';
+import { StatusBadge } from '../../../components/ui/Status';
+import { labelOf } from '../../../lib/labels';
 
 export default function SindicatoDetailPage() {
   const params = useParams<{ id: string }>();
@@ -84,9 +86,9 @@ export default function SindicatoDetailPage() {
                 </Link>
               </td>
               <td>{l.company?.cnpj}</td>
-              <td>{l.kind}</td>
+              <td>{labelOf(l.kind)}</td>
               <td>
-                <span className={`badge ${l.status === 'CONFIRMED' ? 'ok' : ''}`}>{l.status}</span>
+                <StatusBadge value={l.status} />
               </td>
               <td style={{ display: 'flex', gap: 6 }}>
                 {l.status !== 'CONFIRMED' ? (
@@ -121,8 +123,8 @@ export default function SindicatoDetailPage() {
               <td>
                 <Link href={`/instrumentos/${p.instrument.id}`}>{p.instrument.title}</Link>
               </td>
-              <td>{p.instrument.type}</td>
-              <td>{p.instrument.status}</td>
+              <td>{labelOf(p.instrument.type)}</td>
+              <td><StatusBadge value={p.instrument.status} /></td>
             </tr>
           ))}
         </DataTable>

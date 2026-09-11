@@ -110,7 +110,7 @@ export default function Home() {
                         <b>
                           <Link href={a.href || '/alertas'}>{a.text}</Link>
                         </b>
-                        <span>{a.severity}</span>
+                        <span>{labelOf(a.severity)}</span>
                       </div>
                       <Link className="secondary" href={a.href || '/alertas'}>
                         Abrir

@@ -5,6 +5,7 @@ import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import { api } from '../../lib/api';
+import { auditPhrase, labelOf } from '../../lib/labels';
 
 type AuditRow = {
   id: string;
@@ -48,12 +49,12 @@ export default function AuditoriaPage() {
         {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
         <div className="toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           <input
-            placeholder="Filtrar ação (ex: RAG_ASK)"
+            placeholder="Filtrar ação (ex.: consulta IA)"
             value={action}
             onChange={(e) => setAction(e.target.value)}
           />
           <input
-            placeholder="Filtrar entidade (ex: CollectiveInstrument)"
+            placeholder="Filtrar entidade (ex.: instrumento)"
             value={entity}
             onChange={(e) => setEntity(e.target.value)}
           />
@@ -62,23 +63,31 @@ export default function AuditoriaPage() {
           </button>
           <span className="badge">{rows.length} eventos</span>
         </div>
-        <DataTable headers={['Quando', 'Ação', 'Entidade', 'Usuário', 'Detalhes']} empty={!rows.length}>
+        <DataTable headers={['Quando', 'Resumo', 'Entidade', 'Usuário', 'Detalhes']} empty={!rows.length}>
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{new Date(r.createdAt).toLocaleString('pt-BR')}</td>
-              <td>
-                <span className="badge">{r.action}</span>
+              <td className="audit-summary">
+                {auditPhrase(r.action, r.user?.name || r.user?.email, r.entity)}
+                <small>{labelOf(r.action)} · {labelOf(r.entity)}</small>
               </td>
               <td>
-                <b>{r.entity}</b>
+                <b>{labelOf(r.entity)}</b>
                 <div style={{ fontSize: 11 }}>{r.entityId?.slice(0, 12) || '—'}</div>
               </td>
               <td>
-                {r.user?.name || r.user?.email || 'sistema'}
-                {r.user?.role ? <div style={{ fontSize: 11 }}>{r.user.role}</div> : null}
+                {r.user?.name || r.user?.email || 'Sistema'}
+                {r.user?.role ? <div style={{ fontSize: 11 }}>{labelOf(r.user.role)}</div> : null}
               </td>
               <td style={{ fontSize: 12, maxWidth: 360 }}>
-                {r.metadata ? JSON.stringify(r.metadata) : '—'}
+                {r.metadata ? (
+                  <details className="tech-details">
+                    <summary>Ver detalhes</summary>
+                    <pre>{JSON.stringify(r.metadata, null, 2)}</pre>
+                  </details>
+                ) : (
+                  '—'
+                )}
               </td>
             </tr>
           ))}

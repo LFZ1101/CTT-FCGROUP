@@ -5,12 +5,15 @@ import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import ModalForm from '../../components/ModalForm';
 import { api } from '../../lib/api';
+import { StatusBadge } from '../../components/ui/Status';
+import { labelOf } from '../../lib/labels';
 
 export default function Tarefas() {
   const [rows, setRows] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState('');
+  const [taskFilter, setTaskFilter] = useState('ALL');
   const load = () => api<any[]>('/tasks').then(setRows).catch(() => {});
   useEffect(() => {
     load();
@@ -48,7 +51,20 @@ export default function Tarefas() {
     load();
   }
 
+  const filtered = rows.filter((x) => {
+    const due = x.dueAt ? new Date(x.dueAt) : null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+    if (taskFilter === 'DONE') return x.status === 'DONE';
+    if (taskFilter === 'OPEN') return x.status !== 'DONE';
+    if (taskFilter === 'TODAY') return due && due >= today && due < tomorrow;
+    if (taskFilter === 'OVERDUE') return due && due < today && x.status !== 'DONE';
+    if (taskFilter === 'CRITICAL') return Number(x.priority) <= 1 && x.status !== 'DONE';
+    return true;
+  });
+
   return (
+
     <Shell title="Tarefas">
       <div className="page">
         <PageHeader
@@ -67,8 +83,22 @@ export default function Tarefas() {
           }
         />
         {msg ? <p className="feedmeta" style={{ marginBottom: 12 }}>{msg}</p> : null}
-        <DataTable headers={['Tarefa', 'Empresa', 'Prioridade', 'Prazo', 'Status', 'Ação']} empty={!rows.length}>
-          {rows.map((x) => (
+        <div className="filterbar">
+          {[
+            ['ALL', 'Todas'],
+            ['OPEN', 'Abertas'],
+            ['TODAY', 'Hoje'],
+            ['OVERDUE', 'Atrasadas'],
+            ['CRITICAL', 'Críticas'],
+            ['DONE', 'Concluídas'],
+          ].map(([id, label]) => (
+            <button key={id} type="button" className={`chipbtn ${taskFilter === id ? 'active' : ''}`} onClick={() => setTaskFilter(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <DataTable headers={['Tarefa', 'Empresa', 'Prioridade', 'Prazo', 'Status', 'Ação']} empty={!filtered.length}>
+          {filtered.map((x) => (
             <tr key={x.id}>
               <td className="titlecell">
                 <b>{x.title}</b>
@@ -78,9 +108,7 @@ export default function Tarefas() {
               <td>{x.priority}</td>
               <td>{x.dueAt ? new Date(x.dueAt).toLocaleDateString('pt-BR') : '—'}</td>
               <td>
-                <span className={`badge ${x.status === 'DONE' ? 'ok' : x.status === 'BLOCKED' ? 'warn' : 'info'}`}>
-                  {x.status}
-                </span>
+                <StatusBadge value={x.status} />
               </td>
               <td>
                 {x.status !== 'DONE' ? (

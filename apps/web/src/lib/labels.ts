@@ -103,3 +103,46 @@ export function healthLabel(input: string | null | undefined): { label: string; 
   if (['CRITICAL', 'FAILURE', 'FAILED', 'DOWN', 'ERROR'].includes(v)) return { label: 'Crítico', tone: 'danger' };
   return { label: labelOf(input, 'Indefinido'), tone: 'neutral' };
 }
+
+const AUDIT_VERBS: Record<string, string> = {
+  RAG_ASK: 'consultou a IA',
+  INSTRUMENT_VALIDATE: 'validou o instrumento',
+  INSTRUMENT_REJECT: 'rejeitou o instrumento',
+  VALIDATE: 'validou',
+  REJECT: 'rejeitou',
+  LOGIN: 'entrou no sistema',
+  LOGOUT: 'saiu do sistema',
+  COMPANY_CREATE: 'criou uma empresa',
+  COMPANY_UNION_CONFIRM: 'confirmou vínculo sindical',
+  COMPANY_UNION_REJECT: 'rejeitou vínculo sindical',
+  DOCUMENT_REVIEW: 'revisou um documento',
+  PREFERENCES_UPDATE: 'atualizou preferências',
+  SOURCE_PAUSE: 'pausou uma fonte',
+  SOURCE_RESUME: 'reativou uma fonte',
+  COLLABORATIVE_SUBMIT: 'enviou documento à rede',
+  COLLABORATIVE_REQUEST: 'solicitou documento à rede',
+  COLLABORATIVE_MODERATE: 'moderou publicação da rede',
+  TASK_CREATE: 'criou uma tarefa',
+  TASK_COMPLETE: 'concluiu uma tarefa',
+  ALERT_READ: 'marcou alerta como lido',
+};
+
+export function auditPhrase(
+  action: string,
+  userName?: string | null,
+  entity?: string | null,
+): string {
+  const who = userName || 'Sistema';
+  const verb = AUDIT_VERBS[action] || AUDIT_VERBS[action.toUpperCase()] || `executou ${humanize(action)}`;
+  const target = entity ? ` (${humanize(entity)})` : '';
+  return `${who} ${verb}${target}.`;
+}
+
+export function originClass(origin: string | null | undefined): string {
+  const v = (origin || '').toUpperCase();
+  if (v.includes('OFICIAL') || v.includes('MEDIADOR') || v === 'OFFICIAL') return 'badge origin-oficial';
+  if (v.includes('COLABOR') || v.includes('NETWORK') || v.includes('COLLAB')) return 'badge origin-colaborativo';
+  if (v.includes('PRIVAD') || v === 'PRIVATE') return 'badge origin-privado';
+  if (v.includes('SINDIC') || v.includes('UNION')) return 'badge origin-sindicato';
+  return 'badge';
+}
