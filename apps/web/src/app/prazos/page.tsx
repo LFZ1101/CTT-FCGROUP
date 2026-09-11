@@ -5,6 +5,8 @@ import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import { api } from '../../lib/api';
+import { StatusBadge } from '../../components/ui/Status';
+import { labelOf } from '../../lib/labels';
 
 export default function PrazosPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -32,7 +34,25 @@ export default function PrazosPage() {
     }
   }
 
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const counts = {
+    today: rows.filter((d) => d.dueDate && new Date(d.dueDate).toDateString() === new Date().toDateString()).length,
+    d7: rows.filter((d) => {
+      if (!d.dueDate) return false;
+      const t0 = new Date(d.dueDate).getTime() - now;
+      return t0 >= 0 && t0 <= 7 * day;
+    }).length,
+    d30: rows.filter((d) => {
+      if (!d.dueDate) return false;
+      const t0 = new Date(d.dueDate).getTime() - now;
+      return t0 >= 0 && t0 <= 30 * day;
+    }).length,
+    overdue: rows.filter((d) => d.dueDate && new Date(d.dueDate).getTime() < now).length,
+  };
+
   return (
+
     <Shell title="Prazos críticos">
       <div className="page">
         <PageHeader
@@ -46,14 +66,22 @@ export default function PrazosPage() {
           }
         />
         {msg ? <p className="feedmeta">{msg}</p> : null}
+        <div className="deadline-strip">
+          <div className="deadline-card urgent"><div className="k">Vence hoje</div><div className="v">{counts.today}</div></div>
+          <div className="deadline-card warn"><div className="k">Próximos 7 dias</div><div className="v">{counts.d7}</div></div>
+          <div className="deadline-card"><div className="k">Próximos 30 dias</div><div className="v">{counts.d30}</div></div>
+          <div className="deadline-card urgent"><div className="k">Vencidos</div><div className="v">{counts.overdue}</div></div>
+        </div>
         <DataTable
           headers={['Tipo', 'Descrição', 'Vencimento', 'Instrumento', 'Evidência', 'Confiança']}
           empty={!rows.length}
+          emptyTitle="Nenhum prazo crítico no momento"
+          emptyDescription="Quando uma CCT trouxer prazo de oposição, reajuste ou contribuição, ele aparecerá aqui."
         >
           {rows.map((d) => (
             <tr key={d.id}>
               <td>
-                <span className="badge">{d.deadlineType}</span>
+                <StatusBadge value={d.deadlineType} />
               </td>
               <td className="titlecell">
                 <b>{d.description}</b>

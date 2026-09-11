@@ -1,8 +1,10 @@
 'use client';
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ToastProvider } from './ui/Toast';
+import { CommandPalette } from './ui/CommandPalette';
 
 type NavItem = { href: string; label: string; icon: string; match?: string };
 type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -32,7 +34,7 @@ const groups: NavGroup[] = [
       { href: '/instrumentos', label: 'CCT / ACT', icon: '≡', match: '/instrumentos' },
       { href: '/documentos', label: 'Documentos', icon: '▣', match: '/documentos' },
       { href: '/prazos', label: 'Prazos', icon: '◷', match: '/prazos' },
-      { href: '/rede', label: 'Rede Colaborativa', icon: '⧉', match: '/rede' },
+      { href: '/rede', label: 'Rede colaborativa', icon: '⧉', match: '/rede' },
     ],
   },
   {
@@ -65,14 +67,18 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
   const pathname = usePathname();
   const router = useRouter();
   const [name, setName] = useState('Administrador');
+  const [email, setEmail] = useState('');
   const [collapsed, setCollapsed] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem('cct_user');
     if (!localStorage.getItem('cct_token')) router.replace('/login');
     if (raw) {
       try {
-        setName(JSON.parse(raw).name);
+        const u = JSON.parse(raw);
+        setName(u.name || 'Administrador');
+        setEmail(u.email || '');
       } catch {
         /* ignore */
       }
@@ -80,6 +86,24 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
     const pref = localStorage.getItem('cct_nav_collapsed');
     if (pref === '1') setCollapsed(true);
   }, [router]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Bom dia';
+    if (h < 18) return 'Boa tarde';
+    return 'Boa noite';
+  }, []);
 
   function logout() {
     localStorage.removeItem('cct_token');
@@ -104,7 +128,12 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
             <div className="brandmark" aria-hidden>
               CI
             </div>
-            {!collapsed ? <span>CCT Intelligence</span> : null}
+            {!collapsed ? (
+              <div className="brandcopy">
+                <strong>CCT Intelligence</strong>
+                <span>Operação trabalhista</span>
+              </div>
+            ) : null}
           </div>
 
           <nav className="navscroll">
@@ -128,7 +157,12 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
           </nav>
 
           <div className="sidebarfooter">
-            <button type="button" className="navcollapse" onClick={toggleNav} aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}>
+            <button
+              type="button"
+              className="navcollapse"
+              onClick={toggleNav}
+              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            >
               {collapsed ? '»' : '« Recolher'}
             </button>
             <div className="userchip">
@@ -149,18 +183,39 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
 
         <main className="content">
           <header className="topbar">
-            <div className="crumb">
-              CCT Intelligence / <b>{title}</b>
+            <div className="topbar-left">
+              <div className="crumb">
+                <span>CCT Intelligence</span>
+                <span className="crumbsep">/</span>
+                <b>{title}</b>
+              </div>
+              {title === 'Visão geral' ? (
+                <div className="topbar-sub">
+                  {greeting}
+                  {name ? `, ${name.split(' ')[0]}` : ''}
+                </div>
+              ) : null}
             </div>
             <div className="topactions">
+              <button
+                type="button"
+                className="search-trigger"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Busca global"
+              >
+                <span>Buscar empresas, sindicatos, CCT…</span>
+                <kbd>⌘K</kbd>
+              </button>
               <span className="envchip" title="Ambiente">
                 Operação
               </span>
+              {email ? <span className="envchip subtle">{email}</span> : null}
             </div>
           </header>
           {children}
         </main>
       </div>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </ToastProvider>
   );
 }

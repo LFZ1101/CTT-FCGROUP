@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { api } from '../../lib/api';
+import { StatusBadge } from '../../components/ui/Status';
+import { labelOf } from '../../lib/labels';
 
 type Doc = {
   id: string;
@@ -24,6 +26,7 @@ export default function MonitoramentoPage() {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'ops' | 'tech'>('ops');
 
   const load = async () => {
     try {
@@ -97,6 +100,10 @@ export default function MonitoramentoPage() {
         title="Monitoramento"
         description="Acompanhe verificações, falhas, downloads e documentos descobertos nas fontes oficiais e sindicais."
       />
+      <div className="mode-toggle" role="tablist" aria-label="Modo de visualização">
+        <button type="button" className={mode === 'ops' ? 'active' : ''} onClick={() => setMode('ops')}>Operacional</button>
+        <button type="button" className={mode === 'tech' ? 'active' : ''} onClick={() => setMode('tech')}>Técnico</button>
+      </div>
       <div className="toolbar">
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="primary" onClick={run} disabled={loading}>
@@ -124,7 +131,7 @@ export default function MonitoramentoPage() {
                 <th>Documento</th>
                 <th>Fonte</th>
                 <th>Processamento</th>
-                <th>Hash</th>
+                {mode === 'tech' ? <th>Hash</th> : null}
                 <th>Primeira detecção</th>
                 <th>Ações</th>
               </tr>
@@ -138,12 +145,10 @@ export default function MonitoramentoPage() {
                   </td>
                   <td>{d.source?.name}</td>
                   <td>
-                    <span className={`badge ${d.processingStatus === 'FAILED' ? 'warn' : ['STORED','READY_FOR_REVIEW','CLASSIFIED','PARSED'].includes(d.processingStatus) ? 'ok' : 'info'}`}>
-                      {d.processingStatus}
-                    </span>
+                    <StatusBadge value={d.processingStatus} />
                     {d.failureReason ? <div className="feedmeta">{d.failureReason}</div> : null}
                   </td>
-                  <td>{d.contentHash ? `${d.contentHash.slice(0, 12)}…` : '—'}</td>
+                  {mode === 'tech' ? <td>{d.contentHash ? `${d.contentHash.slice(0, 12)}…` : '—'}</td> : null}
                   <td>{new Date(d.firstSeenAt).toLocaleString('pt-BR')}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -156,7 +161,7 @@ export default function MonitoramentoPage() {
               ))}
               {!docs.length ? (
                 <tr>
-                  <td colSpan={6} className="empty">Nenhum documento descoberto ainda.</td>
+                  <td colSpan={mode === 'tech' ? 6 : 5} className="empty">Nenhum documento descoberto ainda.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -177,7 +182,7 @@ export default function MonitoramentoPage() {
               <tr>
                 <th>Fonte</th>
                 <th>Status</th>
-                <th>HTTP</th>
+                {mode === 'tech' ? <th>HTTP</th> : null}
                 <th>Encontrados</th>
                 <th>Executado</th>
               </tr>
@@ -186,15 +191,15 @@ export default function MonitoramentoPage() {
               {history.map((h) => (
                 <tr key={h.id}>
                   <td>{h.source?.name}</td>
-                  <td>{h.status}</td>
-                  <td>{h.httpStatus || '—'}</td>
+                  <td><StatusBadge value={h.status} /></td>
+                  {mode === 'tech' ? <td>{h.httpStatus || '—'}</td> : null}
                   <td>{h.documentsFound}</td>
                   <td>{new Date(h.startedAt).toLocaleString('pt-BR')}</td>
                 </tr>
               ))}
               {!history.length ? (
                 <tr>
-                  <td colSpan={5} className="empty">Nenhuma verificação registrada.</td>
+                  <td colSpan={mode === 'tech' ? 5 : 4} className="empty">Nenhuma verificação registrada.</td>
                 </tr>
               ) : null}
             </tbody>

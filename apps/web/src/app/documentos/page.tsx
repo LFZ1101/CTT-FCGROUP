@@ -6,6 +6,8 @@ import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import { api } from '../../lib/api';
+import { StatusBadge } from '../../components/ui/Status';
+import { labelOf, originClass } from '../../lib/labels';
 
 type SearchResult = {
   query: string;
@@ -79,7 +81,7 @@ export default function DocumentosPage() {
                       <Link href={`/instrumentos/${i.id}`}>{i.title}</Link>
                     </div>
                     <div className="feedmeta">
-                      Instrumento · {i.type} · {i.status}
+                      Instrumento · {labelOf(i.type)} · {labelOf(i.status)}
                     </div>
                   </div>
                 </div>
@@ -92,7 +94,7 @@ export default function DocumentosPage() {
                       <Link href={`/documentos/${d.id}`}>{d.title || d.url}</Link>
                     </div>
                     <div className="feedmeta">
-                      Documento · {d.documentClass || '—'} · {d.processingStatus}
+                      Documento · {labelOf(d.documentClass, '—')} · {labelOf(d.processingStatus)}
                       {d.originBadge ? (
                         <>
                           {' '}
@@ -134,23 +136,15 @@ export default function DocumentosPage() {
                   <Link href={`/documentos/${x.id}`}>{x.title || x.url}</Link>
                 </b>
                 <span>{x.source?.name || 'Fonte'}</span>
-                {x.source?.type === 'COLLABORATIVE_NETWORK' ? (
-                  <span className="badge warn" style={{ marginLeft: 6 }}>
-                    COLABORATIVO
-                  </span>
-                ) : x.source?.type === 'MEDIADOR_MTE' ? (
-                  <span className="badge ok" style={{ marginLeft: 6 }}>
-                    OFICIAL
-                  </span>
-                ) : x.source?.type === 'LABOR_UNION' || x.source?.type === 'EMPLOYER_UNION' ? (
-                  <span className="badge" style={{ marginLeft: 6 }}>
-                    SINDICATO
+                {x.source?.type ? (
+                  <span className={originClass(x.source.type)} style={{ marginLeft: 6 }}>
+                    {labelOf(x.source.type)}
                   </span>
                 ) : null}
               </td>
               <td>{x.documentClass || '—'}</td>
               <td>
-                <span className="badge info">{x.processingStatus}</span>
+                <StatusBadge value={x.processingStatus} />
               </td>
               <td>{x.pageCount ?? x._count?.pages ?? '—'}</td>
               <td>{x.needsReview ? <span className="badge warn">Sim</span> : 'Não'}</td>

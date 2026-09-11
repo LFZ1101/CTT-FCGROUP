@@ -1,49 +1,56 @@
 # Design System — CCT Intelligence
 
-**Data:** 2026-09-10  
-**Princípio:** refinar o que existe; tokens centralizados; sem hex espalhado em features novas.
+**Atualizado:** 2026-09-11 (UX redesign)  
+**Princípio:** refinar o existente; tokens centralizados; UI operacional, não “template”.
 
-## Tokens (`globals.css`)
+## Tokens (`apps/web/src/app/globals.css`)
 
 | Token | Uso |
 |---|---|
-| `--bg` / `--bg-subtle` | Fundo da aplicação |
-| `--surface` / `--surface-2` | Painéis e superfícies |
+| `--bg` / `--bg-subtle` | Fundo off-white frio |
+| `--surface` / `--surface-2` | Painéis |
 | `--text` / `--text-secondary` / `--muted` | Tipografia |
-| `--border` / `--border-strong` | Separadores |
-| `--primary` | Ação principal |
-| `--success` / `--warning` / `--danger` / `--info` | Feedback + badges |
-| `--radius-sm/md/lg` | Cantos |
+| `--border` / `--border-strong` | Separadores leves |
+| `--primary` | Ação principal (azul sóbrio / near-black) |
+| `--success` / `--warning` / `--danger` / `--info` | Feedback |
+| `--radius-sm/md/lg` | Cantos contidos |
 | `--shadow-sm/md` | Elevação discreta |
 | `--fs-display` … `--fs-label` | Escala tipográfica |
+| `--nav` | Sidebar navy quase preto |
 
-Fonte: **Inter** (já adotada) — escala nomeada, sem troca de família.
+Fonte: **Inter** (`next/font`).
+
+## Navegação
+
+- Grupos: **Visão · Carteira · Convenções · Operação · Administração**
+- Sidebar colapsável (ícones + `title` tooltip)
+- Topbar: breadcrumb, busca ⌘K / Ctrl+K (`CommandPalette`), chip de ambiente
 
 ## Componentes base
 
-| Componente | Arquivo | Notas |
-|---|---|---|
-| Shell (nav agrupada + colapso) | `components/Shell.tsx` | Grupos: Visão, Carteira, Convenções, Operação, Administração |
-| PageHeader | `components/PageHeader.tsx` | Título + descrição + ação |
-| DataTable | `components/DataTable.tsx` | Empty state contextual |
-| ModalForm | `components/ModalForm.tsx` | Diálogos de formulário |
-| StatusBadge / EmptyState / Skeleton / ErrorState | `components/ui/Status.tsx` | Estados padronizados |
-| ToastProvider / useToast | `components/ui/Toast.tsx` | Feedback de ação |
-| labels (`labelOf`, `toneOf`, `healthLabel`) | `lib/labels.ts` | Enums internos → PT-BR |
+| Componente | Arquivo |
+|---|---|
+| Shell | `components/Shell.tsx` |
+| PageHeader | `components/PageHeader.tsx` |
+| DataTable | `components/DataTable.tsx` |
+| ModalForm | `components/ModalForm.tsx` |
+| StatusBadge / EmptyState / Skeleton / ErrorState | `components/ui/Status.tsx` |
+| ToastProvider / useToast | `components/ui/Toast.tsx` |
+| CommandPalette | `components/ui/CommandPalette.tsx` |
+| Labels (`labelOf`, `toneOf`, `healthLabel`, `auditPhrase`, `originClass`) | `lib/labels.ts` |
 
-## Convenções de UX
+## Padrões visuais
 
-1. Hierarquia por prioridade (crítico ≠ métrica neutra).
-2. Status traduzidos; enums só no payload/API.
-3. Detalhes técnicos em `<details>` / “Ver detalhes técnicos”.
-4. Empty states explicam o próximo passo.
-5. Loading com skeleton; erro com retry quando possível.
-6. Sidebar colapsável; active state por prefixo de rota.
+- **MetricCard** — contraste de surface, sombra mínima  
+- **AttentionCard** — peso maior (borda/priority)  
+- **Filterbar + chipbtn** — filtros de lista  
+- **Deadline strip** — resumo de criticidade em Prazos  
+- **Mode toggle** — Operacional vs Técnico (Monitoramento)  
+- Origens: Oficial / Sindicato / Colaborativo / Privado via `originClass`
 
-## Status visuais
+## Acessibilidade
 
-- `ok` — saudável / validado / ativo  
-- `warn` — atenção / pendente  
-- `danger` — crítico / falha  
-- `info` — informativo / descoberto  
-- `neutral` — pausado / não conectado
+- Foco visível global  
+- `aria-current` / `aria-label` na nav e busca  
+- Labels explícitos no login  
+- Preferência `prefers-reduced-motion`

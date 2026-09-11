@@ -5,6 +5,8 @@ import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import { api } from '../../lib/api';
 import { ensurePushSubscription } from '../../lib/push';
+import { StatusBadge } from '../../components/ui/Status';
+import { labelOf } from '../../lib/labels';
 
 type Prefs = {
   emailEnabled: boolean;
@@ -21,6 +23,7 @@ export default function Alertas() {
   const [pushBusy, setPushBusy] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [prefsBusy, setPrefsBusy] = useState(false);
+  const [sevFilter, setSevFilter] = useState('ALL');
 
   const load = () => api<any[]>('/alerts').then(setRows).catch(() => {});
   const loadPrefs = () =>
@@ -124,7 +127,14 @@ export default function Alertas() {
     }
   }
 
+  const filteredRows = rows.filter((x) => {
+    if (sevFilter === 'ALL') return true;
+    if (sevFilter === 'UNREAD') return !x.readAt;
+    return x.severity === sevFilter;
+  });
+
   return (
+
     <Shell title="Alertas">
       <div className="page">
         <PageHeader
@@ -187,9 +197,9 @@ export default function Alertas() {
                   value={prefs.minSeverity}
                   onChange={(e) => setPrefs({ ...prefs, minSeverity: e.target.value })}
                 >
-                  <option value="INFO">INFO</option>
-                  <option value="WARNING">WARNING</option>
-                  <option value="CRITICAL">CRITICAL</option>
+                  <option value="INFO">Informativo</option>
+                  <option value="WARNING">Atenção</option>
+                  <option value="CRITICAL">Crítico</option>
                 </select>
               </div>
               <div className="field">
@@ -216,8 +226,26 @@ export default function Alertas() {
           </section>
         ) : null}
 
-        <DataTable headers={['Alerta', 'Contexto', 'Severidade', 'Data', 'Status']} empty={!rows.length}>
-          {rows.map((x) => (
+        <div className="filterbar" role="toolbar" aria-label="Filtros de alertas">
+          {[
+            ['ALL', 'Todos'],
+            ['UNREAD', 'Não lidos'],
+            ['CRITICAL', 'Críticos'],
+            ['WARNING', 'Atenção'],
+            ['INFO', 'Info'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`chipbtn ${sevFilter === id ? 'active' : ''}`}
+              onClick={() => setSevFilter(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <DataTable headers={['Alerta', 'Contexto', 'Severidade', 'Data', 'Status']} empty={!filteredRows.length}>
+          {filteredRows.map((x) => (
             <tr key={x.id}>
               <td className="titlecell">
                 <b>{x.title}</b>
@@ -225,11 +253,7 @@ export default function Alertas() {
               </td>
               <td>{x.company?.tradeName || x.company?.legalName || x.instrument?.title || 'Geral'}</td>
               <td>
-                <span
-                  className={`badge ${x.severity === 'CRITICAL' ? 'warn' : x.severity === 'INFO' ? 'info' : ''}`}
-                >
-                  {x.severity}
-                </span>
+                <StatusBadge value={x.severity} />
               </td>
               <td>{new Date(x.createdAt).toLocaleString('pt-BR')}</td>
               <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

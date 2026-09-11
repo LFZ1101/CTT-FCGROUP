@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import ModalForm from '../../components/ModalForm';
 import { api } from '../../lib/api';
+import { StatusBadge } from '../../components/ui/Status';
 
 export default function ColaboradoresPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -104,7 +105,7 @@ export default function ColaboradoresPage() {
                   : '—'}
               </td>
               <td>
-                <span className={`badge ${r.status === 'ACTIVE' ? 'ok' : ''}`}>{r.status}</span>
+                <StatusBadge value={r.status} />
               </td>
             </tr>
           ))}

@@ -6,7 +6,9 @@ import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import ModalForm from '../../components/ModalForm';
+import { StatusBadge } from '../../components/ui/Status';
 import { api } from '../../lib/api';
+import { labelOf } from '../../lib/labels';
 
 type Instrument = {
   id: string;
@@ -27,6 +29,7 @@ export default function InstrumentosPage() {
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'ALL' | 'VALIDATED' | 'REVIEW' | 'EXPIRING' | 'EXPIRED'>('ALL');
 
   const load = () =>
     api<Instrument[]>('/instruments')
@@ -77,17 +80,28 @@ export default function InstrumentosPage() {
     }
   }
 
+  const now = Date.now();
+  const in60 = now + 60 * 24 * 60 * 60 * 1000;
+  const filtered = rows.filter((x) => {
+    const end = x.endDate ? new Date(x.endDate).getTime() : null;
+    if (filter === 'VALIDATED') return x.status === 'VALIDATED';
+    if (filter === 'REVIEW') return x.status === 'PENDING_REVIEW' || x.status === 'DISCOVERED';
+    if (filter === 'EXPIRING') return end != null && end >= now && end <= in60;
+    if (filter === 'EXPIRED') return end != null && end < now;
+    return true;
+  });
+
   return (
     <Shell title="CCT / ACT">
       <div className="page">
         <PageHeader
           eyebrow="Instrumentos coletivos"
           title="CCT, ACT e aditivos"
-          description="Rascunhos gerados automaticamente a partir do parse documental, com validação humana."
+          description={`${rows.length} instrumento(s) · o que mudou, vigência e o que precisa ser feito.`}
           action={
             <div style={{ display: 'flex', gap: 8 }}>
               <Link className="secondary" href="/instrumentos/comparar">
-                Comparar versões
+                Principais mudanças
               </Link>
               <button className="primary" onClick={() => setOpen(true)}>
                 + Novo instrumento
@@ -95,18 +109,37 @@ export default function InstrumentosPage() {
             </div>
           }
         />
-        {error ? <div className="empty" style={{ color: 'crimson' }}>{error}</div> : null}
+        {error ? <div className="errorstate" style={{ marginBottom: 12 }}><strong>Erro</strong><p>{error}</p></div> : null}
+        <div className="filterbar">
+          {[
+            ['ALL', 'Todos'],
+            ['VALIDATED', 'Vigentes'],
+            ['REVIEW', 'Em revisão'],
+            ['EXPIRING', 'Vencendo'],
+            ['EXPIRED', 'Vencidos'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`chipbtn ${filter === id ? 'active' : ''}`}
+              onClick={() => setFilter(id as typeof filter)}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="badge">{filtered.length} exibidos</span>
+        </div>
         <DataTable
           headers={['Instrumento', 'Registro', 'Vigência', 'Status', 'Cláusulas', 'Docs', 'Ações']}
-          empty={!rows.length}
+          empty={!filtered.length}
         >
-          {rows.map((x) => (
+          {filtered.map((x) => (
             <tr key={x.id}>
               <td className="titlecell">
                 <Link href={`/instrumentos/${x.id}`}>
                   <b>{x.title}</b>
                 </Link>
-                <span>{x.type}</span>
+                <span>{labelOf(x.type)}</span>
               </td>
               <td>{x.registration || '—'}</td>
               <td>
@@ -114,11 +147,7 @@ export default function InstrumentosPage() {
                 {x.endDate ? new Date(x.endDate).toLocaleDateString('pt-BR') : '—'}
               </td>
               <td>
-                <span
-                  className={`badge ${x.status === 'VALIDATED' ? 'ok' : x.status === 'PENDING_REVIEW' ? 'warn' : ''}`}
-                >
-                  {x.status === 'PENDING_REVIEW' ? 'Aguardando validação' : x.status}
-                </span>
+                <StatusBadge value={x.status} />
               </td>
               <td>{x._count?.clauses || 0}</td>
               <td>
