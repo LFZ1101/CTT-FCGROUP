@@ -4,23 +4,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const DESTINATIONS = [
-  { href: '/', label: 'Hoje', group: 'Trabalho' },
-  { href: '/caixa-de-entrada', label: 'Caixa de entrada', group: 'Trabalho' },
+  { href: '/', label: 'Dashboard', group: 'Trabalho' },
+  { href: '/caixa-de-entrada', label: 'Notificações (caixa de entrada)', group: 'Trabalho' },
   { href: '/tarefas', label: 'Tarefas', group: 'Trabalho' },
   { href: '/empresas', label: 'Empresas', group: 'Carteira' },
   { href: '/sindicatos', label: 'Sindicatos', group: 'Carteira' },
+  { href: '/empresas/importar', label: 'Importações', group: 'Carteira' },
   { href: '/colaboradores', label: 'Colaboradores', group: 'Mais' },
-  { href: '/instrumentos', label: 'Instrumentos (CCT / ACT)', group: 'Convenções' },
-  { href: '/prazos', label: 'Central de prazos', group: 'Convenções' },
-  { href: '/vigilancia', label: 'Vigilância', group: 'Convenções' },
+  { href: '/instrumentos', label: 'Instrumentos — CCT / ACT / acordos', group: 'Acordos' },
+  { href: '/prazos', label: 'Prazos', group: 'Acordos' },
+  { href: '/vigilancia', label: 'Monitoramento da carteira', group: 'Acordos' },
   { href: '/documentos', label: 'Documentos', group: 'Mais' },
   { href: '/rede', label: 'Rede colaborativa', group: 'Mais' },
   { href: '/alertas', label: 'Histórico de alertas', group: 'Mais' },
-  { href: '/fontes', label: 'Fontes', group: 'Administração' },
-  { href: '/monitoramento', label: 'Monitoramento', group: 'Administração' },
-  { href: '/rede/moderacao', label: 'Moderação', group: 'Administração' },
-  { href: '/integracoes', label: 'Integrações', group: 'Administração' },
-  { href: '/auditoria', label: 'Auditoria', group: 'Administração' },
+  { href: '/fontes', label: 'Fontes', group: 'Configurações' },
+  { href: '/monitoramento', label: 'Status técnico', group: 'Configurações' },
+  { href: '/rede/moderacao', label: 'Moderação', group: 'Configurações' },
+  { href: '/integracoes', label: 'Integrações', group: 'Configurações' },
+  { href: '/auditoria', label: 'Auditoria', group: 'Configurações' },
 ];
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -56,7 +57,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         <input
           autoFocus
           className="cmd-input"
-          placeholder="Ir para… hoje, empresas, prazos, caixa de entrada"
+          placeholder="Ir para… dashboard, empresas, tarefas, notificações"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />

@@ -92,12 +92,12 @@ export default function InstrumentosPage() {
   });
 
   return (
-    <Shell title="CCT / ACT">
+    <Shell title="Instrumentos">
       <div className="page">
         <PageHeader
-          eyebrow="Instrumentos coletivos"
-          title="CCT, ACT e aditivos"
-          description={`${rows.length} instrumento(s) · o que mudou, vigência e o que precisa ser feito.`}
+          eyebrow="Acordos sindicais"
+          title="Instrumentos"
+          description="CCTs, ACTs e outros acordos sindicais — vigência, mudanças e o que precisa ser feito."
           action={
             <div style={{ display: 'flex', gap: 8 }}>
               <Link className="secondary" href="/instrumentos/comparar">

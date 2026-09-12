@@ -92,3 +92,13 @@
 - Densidade/colunas configuráveis em DataTable
 - Tabs completas de detalhe (empresa/sindicato/instrumento) como evolução incremental
 - Ampliar cobertura de busca global conforme endpoints disponíveis
+
+
+## Familiaridade operacional (2026-09-12)
+
+- Dashboard com título familiar, abas **Tarefas** / **Sindicatos**, filtros Empresa/Responsável/Somente meus
+- Três indicadores: tarefas abertas, prazos próximos, notificações
+- Distribuição atribuídas vs não atribuídas e empresas com mais tarefas
+- Navegação: Dashboard, Notificações, Importações, Instrumentos (acordos), Monitoramento, Configurações
+- Matriz de transição: `docs/UX_UI_FAMILIARITY_TRANSITION.md`
+- API `/dashboard` ampliada com `taskList`, `upcomingDeadlines`, `unionsOverview`, `taskBoard` (sem breaking change dos metrics existentes)

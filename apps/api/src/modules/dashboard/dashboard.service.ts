@@ -32,6 +32,9 @@ export class DashboardService {
       collabPending,
       networkPublished,
       requestsFulfilled,
+      openTasksList,
+      upcomingDeadlines,
+      unionsOverview,
     ] = await Promise.all([
       this.prisma.company.count({ where: { tenantId, active: true } }),
       this.prisma.collectiveInstrument.count({
@@ -138,9 +141,54 @@ export class DashboardService {
           fulfilledAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
+      this.prisma.task.findMany({
+        where: { tenantId, status: { notIn: ['DONE', 'CANCELLED'] } },
+        orderBy: [{ dueAt: 'asc' }, { priority: 'asc' }, { createdAt: 'desc' }],
+        take: 40,
+        include: {
+          company: { select: { id: true, legalName: true, tradeName: true } },
+          instrument: { select: { id: true, title: true, type: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      this.prisma.detectedDeadline.findMany({
+        where: {
+          tenantId,
+          status: 'OPEN',
+          dueDate: { gte: now, lte: in60 },
+        },
+        orderBy: { dueDate: 'asc' },
+        take: 12,
+        include: {
+          instrument: { select: { id: true, title: true, type: true } },
+        },
+      }),
+      this.prisma.union.findMany({
+        where: { tenantId },
+        take: 12,
+        orderBy: { name: 'asc' },
+        include: {
+          _count: { select: { companies: true, parties: true, sources: true } },
+        },
+      }),
     ]);
 
     const coverage = computePortfolioCoverage(coverageCompanies as any);
+
+    const assignedCount = openTasksList.filter((t) => t.assigneeId).length;
+    const unassignedCount = openTasksList.length - assignedCount;
+    const companyDist = new Map<string, { id: string; name: string; count: number }>();
+    for (const t of openTasksList) {
+      const id = t.companyId || 'none';
+      const name = t.company?.tradeName || t.company?.legalName || 'Sem empresa';
+      const cur = companyDist.get(id) || { id: t.companyId || '', name, count: 0 };
+      cur.count += 1;
+      companyDist.set(id, cur);
+    }
+    const statusDist = new Map<string, number>();
+    for (const t of openTasksList) {
+      statusDist.set(t.status, (statusDist.get(t.status) || 0) + 1);
+    }
 
     const attention = [
       newInstruments > 0
@@ -198,13 +246,23 @@ export class DashboardService {
       },
       pipeline: byStatus.map((row) => ({
         status: row.processingStatus,
-        count: row._count,
+        count: typeof row._count === 'number' ? row._count : (row._count as any)?._all ?? 0,
       })),
       documentClasses: byClass.map((row) => ({
         class: row.documentClass,
-        count: row._count,
+        count: typeof row._count === 'number' ? row._count : (row._count as any)?._all ?? 0,
       })),
       recent,
+      /** Lista de tarefas abertas para a Home (não confundir com metrics.openTasks). */
+      taskList: openTasksList,
+      upcomingDeadlines,
+      unionsOverview,
+      taskBoard: {
+        assignedCount,
+        unassignedCount,
+        byCompany: [...companyDist.values()].sort((a, b) => b.count - a.count).slice(0, 8),
+        byStatus: [...statusDist.entries()].map(([status, count]) => ({ status, count })),
+      },
     };
   }
 }

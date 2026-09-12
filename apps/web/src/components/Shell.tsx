@@ -24,8 +24,8 @@ const groups: NavGroup[] = [
     id: 'trabalho',
     label: 'Trabalho',
     items: [
-      { href: '/', label: 'Hoje', icon: '◫' },
-      { href: '/caixa-de-entrada', label: 'Caixa de entrada', icon: '◉', match: '/caixa-de-entrada' },
+      { href: '/', label: 'Dashboard', icon: '◫' },
+      { href: '/caixa-de-entrada', label: 'Notificações', icon: '◉', match: '/caixa-de-entrada' },
       { href: '/tarefas', label: 'Tarefas', icon: '✓', match: '/tarefas' },
     ],
   },
@@ -35,15 +35,16 @@ const groups: NavGroup[] = [
     items: [
       { href: '/empresas', label: 'Empresas', icon: '▦', match: '/empresas' },
       { href: '/sindicatos', label: 'Sindicatos', icon: '⌁', match: '/sindicatos' },
+      { href: '/empresas/importar', label: 'Importações', icon: '⇩', match: '/empresas/importar' },
     ],
   },
   {
     id: 'convencoes',
-    label: 'Convenções',
+    label: 'Acordos',
     items: [
       { href: '/instrumentos', label: 'Instrumentos', icon: '≡', match: '/instrumentos' },
       { href: '/prazos', label: 'Prazos', icon: '◷', match: '/prazos' },
-      { href: '/vigilancia', label: 'Vigilância', icon: '◎', match: '/vigilancia' },
+      { href: '/vigilancia', label: 'Monitoramento', icon: '◎', match: '/vigilancia' },
     ],
   },
   {
@@ -58,11 +59,11 @@ const groups: NavGroup[] = [
   },
   {
     id: 'admin',
-    label: 'Administração',
+    label: 'Configurações',
     roles: MOD_ROLES,
     items: [
       { href: '/fontes', label: 'Fontes', icon: '◎', match: '/fontes', roles: ADMIN_ROLES },
-      { href: '/monitoramento', label: 'Monitoramento', icon: '↻', match: '/monitoramento', roles: ADMIN_ROLES },
+      { href: '/monitoramento', label: 'Status técnico', icon: '↻', match: '/monitoramento', roles: ADMIN_ROLES },
       { href: '/rede/moderacao', label: 'Moderação', icon: '⚖', match: '/rede/moderacao', roles: MOD_ROLES },
       { href: '/integracoes', label: 'Integrações', icon: '⬡', match: '/integracoes', roles: ADMIN_ROLES },
       { href: '/auditoria', label: 'Auditoria', icon: '◫', match: '/auditoria', roles: MOD_ROLES },
@@ -221,7 +222,7 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
                 <span className="crumbsep">/</span>
                 <b>{title}</b>
               </div>
-              {title === 'Hoje' || title === 'Visão geral' ? (
+              {title === 'Dashboard' || title === 'Hoje' || title === 'Visão geral' ? (
                 <div className="topbar-sub">
                   {greeting}
                   {name ? `, ${name.split(' ')[0]}` : ''}
@@ -238,8 +239,8 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
                 <span>Buscar empresas, sindicatos, CCT…</span>
                 <kbd>⌘K</kbd>
               </button>
-              <Link href="/caixa-de-entrada" className="envchip" title="Caixa de entrada">
-                Caixa
+              <Link href="/caixa-de-entrada" className="envchip" title="Notificações e itens que exigem atenção">
+                Notificações
               </Link>
               {email ? <span className="envchip subtle">{email}</span> : null}
             </div>

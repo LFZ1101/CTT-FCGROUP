@@ -86,3 +86,7 @@ Empresa ──vínculo──► Sindicato ──fontes──► Vigilância
 - **Colaboradores sob Mais** evita poluir Carteira sem perder acesso.  
 - **Documentos sob Mais** privilegia Instrumentos como unidade operacional.  
 - **Vigilância** permanece operacional (cobertura); Monitoramento/Fontes vão ao Admin.
+
+
+## Familiaridade
+Ver `docs/UX_UI_FAMILIARITY_TRANSITION.md` — modelo mental Empresa → Acordo → Sindicato → Tarefa → Notificação → Prazo.

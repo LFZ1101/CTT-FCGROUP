@@ -146,12 +146,12 @@ export default function CaixaDeEntradaPage() {
   };
 
   return (
-    <Shell title="Caixa de entrada">
+    <Shell title="Notificações">
       <div className="page">
         <PageHeader
-          eyebrow="Trabalho do dia"
-          title="Caixa de entrada"
-          description="O que aconteceu, o impacto na carteira e a próxima ação recomendada."
+          eyebrow="Caixa de entrada"
+          title="Notificações"
+          description="Notificações, prazos e itens que exigem sua atenção — com a próxima ação recomendada."
           action={
             <div style={{ display: 'flex', gap: 8 }}>
               <Link className="secondary" href="/tarefas">
