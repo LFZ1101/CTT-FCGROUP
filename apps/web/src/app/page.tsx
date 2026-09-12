@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Shell from '../components/Shell';
@@ -47,7 +48,7 @@ export default function Home() {
         setD(res);
         setError('');
       })
-      .catch((e) => setError(e?.message || 'Falha ao carregar visão geral'))
+      .catch((e) => setError(e?.message || 'Falha ao carregar a operação de hoje'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,21 +65,59 @@ export default function Home() {
     [attention],
   );
 
+  const indicators = [
+    {
+      k: 'Cobertura',
+      v: `${m.coveragePct ?? 0}%`,
+      f: 'carteira monitorada',
+      href: '/vigilancia',
+      cls: 'emphasis',
+    },
+    {
+      k: 'Novas CCT/ACT',
+      v: m.newInstruments ?? 0,
+      f: 'últimos 7 dias',
+      href: '/instrumentos',
+      cls: (m.newInstruments ?? 0) > 0 ? 'alertish' : '',
+    },
+    {
+      k: 'Prazos críticos',
+      v: m.criticalDeadlines ?? 0,
+      f: 'próximos 7 dias',
+      href: '/prazos',
+      cls: (m.criticalDeadlines ?? 0) > 0 ? 'alertish' : '',
+      tone: (m.criticalDeadlines ?? 0) > 0 ? 'danger' : '',
+    },
+    {
+      k: 'Em revisão',
+      v: (m.pendingValidations ?? 0) + (m.docsReadyForReview ?? 0),
+      f: 'instrumentos e documentos',
+      href: '/caixa-de-entrada',
+      cls: (m.pendingValidations ?? 0) + (m.docsReadyForReview ?? 0) > 0 ? 'alertish' : '',
+      tone: (m.pendingValidations ?? 0) > 0 ? 'warn' : '',
+    },
+  ];
+
   return (
-    <Shell title="Visão geral">
+    <Shell title="Hoje">
       <div className="page">
         <PageHeader
-          eyebrow="Prioridade operacional"
-          title="O que exige atenção hoje?"
-          description="Foque no que muda risco: novos instrumentos, prazos críticos, falhas de fonte e vínculos pendentes."
+          eyebrow="Central operacional"
+          title="Visão geral da operação"
+          description="O que exige atenção na sua carteira hoje."
+          action={
+            <Link className="primary" href="/caixa-de-entrada">
+              Abrir caixa de entrada
+            </Link>
+          }
         />
 
-        <section className="panel" style={{ marginBottom: 16 }}>
+        <section className="panel attention-hero" style={{ marginBottom: 16 }}>
           <div className="panelhead">
             <h2>
               {attentionCount
-                ? `${attentionCount} ${attentionCount === 1 ? 'item exige' : 'itens exigem'} sua atenção`
-                : 'Nada crítico no momento'}
+                ? `${attentionCount} ${attentionCount === 1 ? 'item precisa' : 'itens precisam'} da sua atenção`
+                : 'Nada urgente no momento'}
             </h2>
             <span>
               Mediador{' '}
@@ -99,7 +138,7 @@ export default function Home() {
           ) : (
             <div className="attention-board" style={{ padding: 16 }}>
               {ranked.length ? (
-                ranked.map((a: any) => {
+                ranked.slice(0, 6).map((a: any) => {
                   const p = priorityOf(a);
                   return (
                     <div className={`attention-card priority-${p}`} key={a.code || a.text}>
@@ -108,12 +147,12 @@ export default function Home() {
                       </span>
                       <div>
                         <b>
-                          <Link href={a.href || '/alertas'}>{a.text}</Link>
+                          <Link href={a.href || '/caixa-de-entrada'}>{a.text}</Link>
                         </b>
                         <span>{labelOf(a.severity)}</span>
                       </div>
-                      <Link className="secondary" href={a.href || '/alertas'}>
-                        Abrir
+                      <Link className="secondary" href={a.href || '/caixa-de-entrada'}>
+                        Revisar agora
                       </Link>
                     </div>
                   );
@@ -121,66 +160,33 @@ export default function Home() {
               ) : (
                 <EmptyState
                   title="Operação sob controle"
-                  description="Continue monitorando fontes e validando vínculos sindicais. Novos itens aparecerão aqui automaticamente."
+                  description="Quando houver nova CCT, prazo crítico ou falha de fonte, o item aparecerá aqui com a ação recomendada."
+                  action={
+                    <Link className="secondary" href="/vigilancia">
+                      Ver vigilância
+                    </Link>
+                  }
                 />
               )}
             </div>
           )}
         </section>
 
-        <section className="metrics">
-          {[
-            {
-              k: 'Cobertura',
-              v: `${m.coveragePct ?? 0}%`,
-              f: 'carteira monitorada',
-              cls: 'emphasis',
-            },
-            {
-              k: 'Novos instrumentos',
-              v: m.newInstruments ?? 0,
-              f: '7 dias',
-              cls: (m.newInstruments ?? 0) > 0 ? 'alertish' : '',
-            },
-            {
-              k: 'Prazos críticos',
-              v: m.criticalDeadlines ?? 0,
-              f: 'próximos 7 dias',
-              cls: (m.criticalDeadlines ?? 0) > 0 ? 'alertish' : '',
-              tone: (m.criticalDeadlines ?? 0) > 0 ? 'danger' : '',
-            },
-            {
-              k: 'Aguardando validação',
-              v: m.pendingValidations,
-              f: 'revisão humana',
-              cls: m.pendingValidations > 0 ? 'alertish' : '',
-              tone: m.pendingValidations > 0 ? 'warn' : '',
-            },
-            {
-              k: 'Alertas não lidos',
-              v: m.unreadAlerts,
-              f: 'publicação e divergência',
-              cls: m.unreadAlerts > 0 ? 'alertish' : '',
-              tone: m.unreadAlerts > 0 ? 'warn' : '',
-            },
-            { k: 'Rede colaborativa', v: m.collaborativeNetworkNew ?? 0, f: 'novas na semana', cls: '' },
-            { k: 'Em revisão na rede', v: m.collaborativePendingReview ?? 0, f: 'aguardando moderação', cls: '' },
-            { k: 'Pedidos atendidos', v: m.documentRequestsFulfilled ?? 0, f: '30 dias', cls: '' },
-            { k: 'Vigências (60d)', v: m.instrumentsExpiringSoon ?? 0, f: 'risco de vencimento', cls: '' },
-          ].map((x) => (
-            <article className={`metric ${x.cls}`} key={x.k}>
+        <section className="metrics metrics-compact">
+          {indicators.map((x) => (
+            <Link href={x.href} key={x.k} className={`metric ${x.cls}`}>
               <div className="k">{x.k}</div>
               <div className={`v ${x.tone || ''}`}>{x.v}</div>
               <div className="f">{x.f}</div>
-            </article>
+            </Link>
           ))}
         </section>
 
-        <div className="grid2">
+        <div className="grid2" style={{ marginTop: 14 }}>
           <section className="panel">
             <div className="panelhead">
-              <h2>Movimentações recentes</h2>
-              <Link href="/alertas">ver alertas</Link>
+              <h2>Fila operacional</h2>
+              <Link href="/caixa-de-entrada">caixa de entrada</Link>
             </div>
             <div className="feed">
               {loading ? (
@@ -188,7 +194,7 @@ export default function Home() {
                   <Skeleton rows={4} />
                 </div>
               ) : d.recent?.length ? (
-                d.recent.map((x: any) => (
+                d.recent.slice(0, 8).map((x: any) => (
                   <div className="feedrow" key={x.id}>
                     <span
                       className={`sev ${x.severity === 'CRITICAL' ? 'red' : x.severity === 'WARNING' ? 'amber' : 'blue'}`}
@@ -209,22 +215,29 @@ export default function Home() {
               ) : (
                 <EmptyState
                   title="Sem movimentações recentes"
-                  description="Quando houver novos alertas ou validações, o histórico aparecerá aqui."
+                  description="Alertas e validações relevantes da carteira aparecem nesta fila."
                 />
               )}
             </div>
           </section>
+
           <aside className="panel">
             <div className="panelhead">
-              <h2>Atalhos operacionais</h2>
-              <Link href="/vigilancia">vigilância</Link>
+              <h2>Saúde da carteira</h2>
+              <Link href="/vigilancia">abrir</Link>
             </div>
             <div className="attention">
               <div className="attn">
                 <strong>
-                  <Link href="/vigilancia">Vigilância Sindical</Link>
+                  {(m.openTasks ?? 0) + (m.unreadAlerts ?? 0)} itens abertos
                 </strong>
-                <p>Cobertura da carteira e saúde das fontes.</p>
+                <p>
+                  {m.openTasks ?? 0} tarefas · {m.unreadAlerts ?? 0} alertas não lidos
+                </p>
+              </div>
+              <div className="attn">
+                <strong>{m.instrumentsExpiringSoon ?? 0} vigências em 60 dias</strong>
+                <p>Instrumentos próximos do vencimento na carteira.</p>
               </div>
               <div className="attn">
                 <strong>
@@ -234,15 +247,9 @@ export default function Home() {
               </div>
               <div className="attn">
                 <strong>
-                  <Link href="/instrumentos">CCT / ACT</Link>
+                  <Link href="/instrumentos">Revisar instrumentos</Link>
                 </strong>
-                <p>Novos instrumentos e empresas potencialmente impactadas.</p>
-              </div>
-              <div className="attn">
-                <strong>
-                  <Link href="/rede">Rede Colaborativa</Link>
-                </strong>
-                <p>Documentos compartilhados entre escritórios antes da publicação oficial.</p>
+                <p>Novas CCT/ACT e empresas potencialmente impactadas.</p>
               </div>
             </div>
           </aside>

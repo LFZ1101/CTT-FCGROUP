@@ -207,3 +207,41 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .loginvisual .brand{color:#fff;padding:0;margin-bottom:28px}
 .loginvisual .brandcopy strong{color:#f3f6fa;display:block;font-size:14px}
 .loginvisual .brandcopy span{color:#7f8a98;font-size:11px}
+
+
+/* === UX SIMPLIFICATION: inbox + compact metrics === */
+.metrics-compact{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+a.metric{display:block;color:inherit;transition:border-color .15s ease,box-shadow .15s ease}
+a.metric:hover{border-color:var(--border-strong,#d0d7e1);box-shadow:var(--shadow-sm,0 1px 2px rgba(15,23,42,.04))}
+.attention-hero .panelhead h2{font-size:16px;letter-spacing:-.02em}
+.inbox-list{display:grid;gap:10px}
+.inbox-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;background:#fff;border:1px solid var(--border,#e2e7ee);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow-sm,0 1px 2px rgba(15,23,42,.04))}
+.inbox-card.priority-high{border-color:#fecaca;background:linear-gradient(180deg,#fff,#fff8f8)}
+.inbox-card.priority-med{border-color:#fde68a;background:linear-gradient(180deg,#fff,#fffbeb)}
+.inbox-card-main h3{margin:8px 0 4px;font-size:14px;letter-spacing:-.01em}
+.inbox-card-main p{margin:0;font-size:12px;color:var(--muted,#66707d);line-height:1.45}
+.inbox-card-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.inbox-card-context{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted,#66707d)}
+.inbox-card-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch;min-width:150px}
+.inbox-card-actions .primary,.inbox-card-actions .secondary{text-align:center;justify-content:center}
+.badge.warn{background:var(--warning-bg,#fff7e6);color:var(--warning,#a16207)}
+@media(max-width:900px){
+  .metrics-compact{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .inbox-card{grid-template-columns:1fr}
+  .inbox-card-actions{flex-direction:row;flex-wrap:wrap}
+}
+
+
+/* === Revisão documental guiada === */
+.review-progress{margin:0 0 14px;padding:14px 16px;background:#fff;border:1px solid var(--border,#e2e7ee);border-radius:12px}
+.review-progress-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.review-progress-meta strong{font-size:14px;letter-spacing:-.01em}
+.review-steps{display:flex;flex-wrap:wrap;gap:8px}
+.review-step{border:1px solid var(--border,#e2e7ee);background:#fff;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--muted,#66707d);cursor:pointer}
+.review-step.active{background:#111827;color:#fff;border-color:#111827}
+.review-step.done{border-color:#86efac;color:#166534;background:#f0fdf4}
+.review-progress .feedmeta,.review-progress .feedmeta{margin:10px 0 0}
+.tech-details{margin-top:12px;padding:12px 14px;border:1px dashed var(--border,#d5dbe5);border-radius:10px;background:#fafbfc}
+.tech-details summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--muted,#66707d)}
+.tech-details summary:hover{color:#111827}
+.feedmeta{font-size:11px;color:var(--muted,#66707d);line-height:1.4}

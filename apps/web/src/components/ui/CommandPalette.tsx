@@ -4,19 +4,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const DESTINATIONS = [
-  { href: '/', label: 'Visão geral', group: 'Visão' },
-  { href: '/vigilancia', label: 'Vigilância sindical', group: 'Visão' },
+  { href: '/', label: 'Hoje', group: 'Trabalho' },
+  { href: '/caixa-de-entrada', label: 'Caixa de entrada', group: 'Trabalho' },
+  { href: '/tarefas', label: 'Tarefas', group: 'Trabalho' },
   { href: '/empresas', label: 'Empresas', group: 'Carteira' },
-  { href: '/colaboradores', label: 'Colaboradores', group: 'Carteira' },
   { href: '/sindicatos', label: 'Sindicatos', group: 'Carteira' },
-  { href: '/instrumentos', label: 'CCT / ACT', group: 'Convenções' },
-  { href: '/documentos', label: 'Documentos', group: 'Convenções' },
+  { href: '/colaboradores', label: 'Colaboradores', group: 'Mais' },
+  { href: '/instrumentos', label: 'Instrumentos (CCT / ACT)', group: 'Convenções' },
   { href: '/prazos', label: 'Central de prazos', group: 'Convenções' },
-  { href: '/rede', label: 'Rede colaborativa', group: 'Convenções' },
-  { href: '/alertas', label: 'Alertas', group: 'Operação' },
-  { href: '/tarefas', label: 'Tarefas', group: 'Operação' },
-  { href: '/monitoramento', label: 'Monitoramento', group: 'Operação' },
+  { href: '/vigilancia', label: 'Vigilância', group: 'Convenções' },
+  { href: '/documentos', label: 'Documentos', group: 'Mais' },
+  { href: '/rede', label: 'Rede colaborativa', group: 'Mais' },
+  { href: '/alertas', label: 'Histórico de alertas', group: 'Mais' },
   { href: '/fontes', label: 'Fontes', group: 'Administração' },
+  { href: '/monitoramento', label: 'Monitoramento', group: 'Administração' },
+  { href: '/rede/moderacao', label: 'Moderação', group: 'Administração' },
   { href: '/integracoes', label: 'Integrações', group: 'Administração' },
   { href: '/auditoria', label: 'Auditoria', group: 'Administração' },
 ];
@@ -54,7 +56,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         <input
           autoFocus
           className="cmd-input"
-          placeholder="Ir para… empresas, prazos, vigilância"
+          placeholder="Ir para… hoje, empresas, prazos, caixa de entrada"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />

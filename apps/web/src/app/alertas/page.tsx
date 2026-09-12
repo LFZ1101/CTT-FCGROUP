@@ -163,13 +163,14 @@ export default function Alertas() {
         </p>
 
         {prefs ? (
-          <section className="panel" style={{ marginBottom: 14 }} aria-labelledby="alert-prefs-title">
-            <div className="panelhead">
+          <details className="panel" style={{ marginBottom: 14 }}>
+            <summary className="panelhead" style={{ cursor: 'pointer', listStyle: 'none' }}>
               <div>
-                <span className="eyebrow">PREFERÊNCIAS</span>
-                <h2 id="alert-prefs-title">Notificações do seu usuário</h2>
+                <span className="eyebrow">CONFIGURAÇÕES</span>
+                <h2 id="alert-prefs-title">Preferências de notificação</h2>
               </div>
-            </div>
+              <span className="feedmeta">Opcional · e-mail e Web Push</span>
+            </summary>
             <form onSubmit={savePrefs} style={{ padding: 14, display: 'grid', gap: 10, maxWidth: 520 }}>
               <fieldset style={{ border: 0, margin: 0, padding: 0, display: 'grid', gap: 10 }}>
                 <legend className="sr-only">Canais de notificação</legend>
@@ -203,7 +204,7 @@ export default function Alertas() {
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="alert-muted-types">Tipos silenciados (CSV)</label>
+                <label htmlFor="alert-muted-types">Tipos silenciados (separados por vírgula)</label>
                 <input
                   id="alert-muted-types"
                   value={prefs.mutedTypes.join(', ')}
@@ -216,14 +217,14 @@ export default function Alertas() {
                         .filter(Boolean),
                     })
                   }
-                  placeholder="ex.: INSTRUMENT_EXPIRING"
+                  placeholder="ex.: prazo próximo"
                 />
               </div>
               <button className="secondary" type="submit" disabled={prefsBusy} aria-busy={prefsBusy}>
                 {prefsBusy ? 'Salvando…' : 'Salvar preferências'}
               </button>
             </form>
-          </section>
+          </details>
         ) : null}
 
         <div className="filterbar" role="toolbar" aria-label="Filtros de alertas">

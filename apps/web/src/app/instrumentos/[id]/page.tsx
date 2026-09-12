@@ -7,6 +7,8 @@ import PageHeader from '../../../components/PageHeader';
 import AskPanel from '../../../components/AskPanel';
 import AuditTrail from '../../../components/AuditTrail';
 import { api } from '../../../lib/api';
+import { labelOf } from '../../../lib/labels';
+import { StatusBadge } from '../../../components/ui/Status';
 
 type Clause = {
   id: string;
@@ -184,17 +186,7 @@ export default function InstrumentoDetalhePage() {
           <>
             <div className="toolbar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               <span className="badge">{item.type === 'CCT' ? 'CCT' : item.type === 'ACT' ? 'ACT' : item.type}</span>
-              <span className={`badge ${item.status === 'VALIDATED' ? 'ok' : item.status === 'PENDING_REVIEW' || item.status === 'DISCOVERED' ? 'warn' : ''}`}>
-                {item.status === 'PENDING_REVIEW'
-                  ? 'Aguardando validação'
-                  : item.status === 'VALIDATED'
-                    ? 'Validado'
-                    : item.status === 'DISCOVERED'
-                      ? 'Descoberto'
-                      : item.status === 'REJECTED'
-                        ? 'Rejeitado'
-                        : item.status}
-              </span>
+              <StatusBadge value={item.status} />
               <span className="badge">{item.clauses?.length || 0} cláusulas</span>
               <a className="secondary" href="/instrumentos">Voltar</a>
               <a className="secondary" href={`/instrumentos/comparar?current=${item.id}`}>
@@ -460,7 +452,7 @@ export default function InstrumentoDetalhePage() {
                     {(item.discoveredDocuments || []).map((d) => (
                       <div key={d.id}>
                         <a href={`/documentos/${d.id}`}>{d.title || d.id.slice(0, 8)}</a>
-                        <span className="badge" style={{ marginLeft: 8 }}>{d.processingStatus}</span>
+                        <span className="badge" style={{ marginLeft: 8 }}>{labelOf(d.processingStatus)}</span>
                       </div>
                     ))}
                     {!item.discoveredDocuments?.length ? <div className="empty">Sem documentos vinculados.</div> : null}

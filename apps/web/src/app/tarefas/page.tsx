@@ -1,5 +1,6 @@
 'use client';
 import { FormEvent, useEffect, useState } from 'react';
+import Link from 'next/link';
 import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
@@ -72,9 +73,12 @@ export default function Tarefas() {
           title="Tarefas"
           description="Ações geradas a partir de convenções, validações e impactos na carteira."
           action={
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Link className="secondary" href="/caixa-de-entrada">
+                Ver Caixa de entrada
+              </Link>
               <button className="secondary" onClick={() => void syncReview()}>
-                Sincronizar revisões
+                Gerar tarefas de revisão
               </button>
               <button className="primary" onClick={() => setOpen(true)}>
                 + Nova tarefa
@@ -97,7 +101,22 @@ export default function Tarefas() {
             </button>
           ))}
         </div>
-        <DataTable headers={['Tarefa', 'Empresa', 'Prioridade', 'Prazo', 'Status', 'Ação']} empty={!filtered.length}>
+        <DataTable
+          headers={['Tarefa', 'Empresa', 'Prioridade', 'Prazo', 'Status', 'Ação']}
+          empty={!filtered.length}
+          emptyTitle={
+            taskFilter === 'OVERDUE'
+              ? 'Nenhuma tarefa atrasada'
+              : taskFilter === 'TODAY'
+                ? 'Nenhuma tarefa para hoje'
+                : taskFilter === 'DONE'
+                  ? 'Nenhuma tarefa concluída nesta lista'
+                  : taskFilter === 'CRITICAL'
+                    ? 'Nenhuma tarefa crítica aberta'
+                    : 'Nenhuma tarefa pendente'
+          }
+          emptyDescription="Novas ações aparecerão aqui quando houver instrumentos, prazos ou revisões que exijam acompanhamento. Enquanto isso, consulte a Caixa de entrada."
+        >
           {filtered.map((x) => (
             <tr key={x.id}>
               <td className="titlecell">
@@ -105,7 +124,7 @@ export default function Tarefas() {
                 <span>{x.description || x.instrument?.title || 'Sem descrição'}</span>
               </td>
               <td>{x.company?.tradeName || x.company?.legalName || 'Geral'}</td>
-              <td>{x.priority}</td>
+              <td>{Number(x.priority) <= 1 ? 'Crítica' : Number(x.priority) === 2 ? 'Alta' : Number(x.priority) === 3 ? 'Normal' : Number(x.priority) === 4 ? 'Baixa' : 'Planejada'}</td>
               <td>{x.dueAt ? new Date(x.dueAt).toLocaleDateString('pt-BR') : '—'}</td>
               <td>
                 <StatusBadge value={x.status} />

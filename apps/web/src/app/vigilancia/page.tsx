@@ -60,15 +60,15 @@ export default function VigilanciaPage() {
   }, [data, failing, m.unionsWithoutSource, mediador.tone]);
 
   return (
-    <Shell title="Vigilância Sindical">
+    <Shell title="Vigilância">
       <div className="page">
         <PageHeader
           eyebrow="Saúde operacional da carteira"
-          title="Vigilância Sindical"
-          description="A carteira está realmente sendo monitorada? Cobertura, fontes e falhas — em linguagem operacional."
+          title="Vigilância"
+          description="Sua carteira está realmente protegida e monitorada? Cobertura, pontos cegos e saúde das fontes."
           action={
             <button className="primary" type="button" disabled={busy} onClick={() => void scanDiv()}>
-              {busy ? 'Escaneando…' : 'Escanear divergências'}
+              {busy ? 'Verificando…' : 'Verificar pontos cegos agora'}
             </button>
           }
         />

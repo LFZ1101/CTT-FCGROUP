@@ -1,7 +1,7 @@
 /** Rótulos de UI — enums internos permanecem; só a apresentação muda. */
 
 const STATUS: Record<string, string> = {
-  DISCOVERED: 'Descoberto',
+  DISCOVERED: 'Documento encontrado',
   NEW: 'Novo',
   STORED: 'Armazenado',
   CLASSIFIED: 'Classificado',
@@ -51,6 +51,49 @@ const STATUS: Record<string, string> = {
   CCT: 'CCT',
   ACT: 'ACT',
   ADITIVO: 'Aditivo',
+  EXTENSION: 'Prorrogação',
+  ADDENDUM: 'Aditivo',
+  UNKNOWN: 'Não classificado',
+  OWNER: 'Proprietário',
+  ADMIN: 'Administrador',
+  MODERATOR: 'Moderador',
+  ANALYST: 'Analista',
+  MEMBER: 'Membro',
+  USER: 'Usuário',
+  OPPOSITION: 'Oposição',
+  READJUSTMENT: 'Reajuste',
+  CONTRIBUTION: 'Contribuição',
+  DEADLINE: 'Prazo',
+  EXPIRATION: 'Vencimento',
+  BASE_DATE: 'Data-base',
+  NETWORK_RELATED: 'Rede · relacionado',
+  TENANT_PRIVATE: 'Privado do escritório',
+  RELATED_UNION: 'Mesmo sindicato',
+  GLOBAL: 'Global',
+  LABOR_SOURCE: 'Fonte laboral',
+  EMPLOYER_SOURCE: 'Fonte patronal',
+  UNION_SITE: 'Site sindical',
+  WEB: 'Site web',
+  RSS: 'RSS',
+  API: 'API',
+  PROCESSING: 'Processando',
+  NEEDS_REVIEW: 'Revisão necessária',
+  HUMAN_REVIEW: 'Revisão humana',
+  APPROVED: 'Aprovado',
+  COMPLETED: 'Concluído',
+  PARTIAL: 'Concluído com alertas',
+  RUNNING: 'Em execução',
+  QUEUED: 'Na fila',
+  SKIPPED: 'Ignorado',
+  UNREAD: 'Não lido',
+  READ: 'Tratado',
+  FOUND: 'Encontrado',
+  SEM_CLASSE: 'Sem classe',
+  HIGH: 'Alta',
+  MEDIUM: 'Média',
+  LOW: 'Baixa',
+  INSTRUMENT_COMPARED: 'Comparação concluída',
+  APPLICATION_CONFIRMED: 'Aplicação confirmada',
 };
 
 const SEVERITY_TONE: Record<string, 'ok' | 'warn' | 'danger' | 'info' | 'neutral'> = {
@@ -61,10 +104,18 @@ const SEVERITY_TONE: Record<string, 'ok' | 'warn' | 'danger' | 'info' | 'neutral
   CONFIRMED: 'ok',
   ACTIVE: 'ok',
   DONE: 'ok',
+  APPROVED: 'ok',
+  COMPLETED: 'ok',
+  CONNECTED: 'ok',
+  READ: 'ok',
   WARNING: 'warn',
   PENDING_REVIEW: 'warn',
   READY_FOR_REVIEW: 'warn',
   SUGGESTED: 'warn',
+  NEEDS_REVIEW: 'warn',
+  NEEDS_CHANGES: 'warn',
+  PARTIAL: 'warn',
+  UNREAD: 'warn',
   CRITICAL: 'danger',
   FAILED: 'danger',
   REJECTED: 'danger',
@@ -73,6 +124,7 @@ const SEVERITY_TONE: Record<string, 'ok' | 'warn' | 'danger' | 'info' | 'neutral
   INFO: 'info',
   DISCOVERED: 'info',
   NEW: 'info',
+  FOUND: 'info',
   UNSUPPORTED: 'neutral',
   INACTIVE: 'neutral',
   PAUSED: 'neutral',
@@ -96,11 +148,14 @@ function humanize(raw: string): string {
     .replace(/^\w/, (c) => c.toUpperCase());
 }
 
-export function healthLabel(input: string | null | undefined): { label: string; tone: 'ok' | 'warn' | 'danger' | 'neutral' } {
+export function healthLabel(
+  input: string | null | undefined,
+): { label: string; tone: 'ok' | 'warn' | 'danger' | 'neutral' } {
   const v = (input || '').toUpperCase();
   if (['OK', 'HEALTHY', 'SUCCESS', 'UP'].includes(v)) return { label: 'Saudável', tone: 'ok' };
   if (['WARNING', 'DEGRADED', 'ATTENTION'].includes(v)) return { label: 'Atenção', tone: 'warn' };
-  if (['CRITICAL', 'FAILURE', 'FAILED', 'DOWN', 'ERROR'].includes(v)) return { label: 'Crítico', tone: 'danger' };
+  if (['CRITICAL', 'FAILURE', 'FAILED', 'DOWN', 'ERROR'].includes(v))
+    return { label: 'Crítico', tone: 'danger' };
   return { label: labelOf(input, 'Indefinido'), tone: 'neutral' };
 }
 
@@ -133,7 +188,8 @@ export function auditPhrase(
   entity?: string | null,
 ): string {
   const who = userName || 'Sistema';
-  const verb = AUDIT_VERBS[action] || AUDIT_VERBS[action.toUpperCase()] || `executou ${humanize(action)}`;
+  const verb =
+    AUDIT_VERBS[action] || AUDIT_VERBS[action.toUpperCase()] || `executou ${humanize(action)}`;
   const target = entity ? ` (${humanize(entity)})` : '';
   return `${who} ${verb}${target}.`;
 }
@@ -141,7 +197,8 @@ export function auditPhrase(
 export function originClass(origin: string | null | undefined): string {
   const v = (origin || '').toUpperCase();
   if (v.includes('OFICIAL') || v.includes('MEDIADOR') || v === 'OFFICIAL') return 'badge origin-oficial';
-  if (v.includes('COLABOR') || v.includes('NETWORK') || v.includes('COLLAB')) return 'badge origin-colaborativo';
+  if (v.includes('COLABOR') || v.includes('NETWORK') || v.includes('COLLAB'))
+    return 'badge origin-colaborativo';
   if (v.includes('PRIVAD') || v === 'PRIVATE') return 'badge origin-privado';
   if (v.includes('SINDIC') || v.includes('UNION')) return 'badge origin-sindicato';
   return 'badge';

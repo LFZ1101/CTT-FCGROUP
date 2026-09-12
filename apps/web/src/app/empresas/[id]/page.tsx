@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Shell from '../../../components/Shell';
 import PageHeader from '../../../components/PageHeader';
 import { api } from '../../../lib/api';
-
+import { labelOf } from '../../../lib/labels';
 type Union = {
   id: string;
   name: string;
@@ -244,7 +244,7 @@ export default function EmpresaDetalhePage() {
                           <b>{cu.union.name}</b>
                           <div style={{ fontSize: 12 }}>{cu.union.cnpj || ''}</div>
                         </td>
-                        <td>{cu.kind}</td>
+                        <td>{labelOf(cu.kind)}</td>
                         <td style={{ fontSize: 12 }}>
                           {(cu.union.states || []).join(', ') || '—'}
                           <br />
@@ -310,7 +310,7 @@ export default function EmpresaDetalhePage() {
                     {suggestions.suggestions.map((s: any) => (
                       <div key={`${s.unionId}-${s.kind}`} className="attn">
                         <strong>
-                          {s.unionName} · {Math.round(s.score * 100)}% · {s.kind}
+                          {s.unionName} · {Math.round(s.score * 100)}% · {labelOf(s.kind)}
                         </strong>
                         <p>{s.label}</p>
                         <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12 }}>

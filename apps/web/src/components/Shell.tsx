@@ -6,16 +6,27 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ToastProvider } from './ui/Toast';
 import { CommandPalette } from './ui/CommandPalette';
 
-type NavItem = { href: string; label: string; icon: string; match?: string };
-type NavGroup = { id: string; label: string; items: NavItem[] };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  match?: string;
+  /** If set, item only shows for these roles (uppercase). */
+  roles?: string[];
+};
+type NavGroup = { id: string; label: string; items: NavItem[]; roles?: string[] };
+
+const ADMIN_ROLES = ['OWNER', 'ADMIN'];
+const MOD_ROLES = ['OWNER', 'ADMIN', 'MODERATOR'];
 
 const groups: NavGroup[] = [
   {
-    id: 'visao',
-    label: 'Visão',
+    id: 'trabalho',
+    label: 'Trabalho',
     items: [
-      { href: '/', label: 'Visão geral', icon: '◫' },
-      { href: '/vigilancia', label: 'Vigilância', icon: '◎', match: '/vigilancia' },
+      { href: '/', label: 'Hoje', icon: '◫' },
+      { href: '/caixa-de-entrada', label: 'Caixa de entrada', icon: '◉', match: '/caixa-de-entrada' },
+      { href: '/tarefas', label: 'Tarefas', icon: '✓', match: '/tarefas' },
     ],
   },
   {
@@ -23,7 +34,6 @@ const groups: NavGroup[] = [
     label: 'Carteira',
     items: [
       { href: '/empresas', label: 'Empresas', icon: '▦', match: '/empresas' },
-      { href: '/colaboradores', label: 'Colaboradores', icon: '☰', match: '/colaboradores' },
       { href: '/sindicatos', label: 'Sindicatos', icon: '⌁', match: '/sindicatos' },
     ],
   },
@@ -31,28 +41,31 @@ const groups: NavGroup[] = [
     id: 'convencoes',
     label: 'Convenções',
     items: [
-      { href: '/instrumentos', label: 'CCT / ACT', icon: '≡', match: '/instrumentos' },
-      { href: '/documentos', label: 'Documentos', icon: '▣', match: '/documentos' },
+      { href: '/instrumentos', label: 'Instrumentos', icon: '≡', match: '/instrumentos' },
       { href: '/prazos', label: 'Prazos', icon: '◷', match: '/prazos' },
-      { href: '/rede', label: 'Rede colaborativa', icon: '⧉', match: '/rede' },
+      { href: '/vigilancia', label: 'Vigilância', icon: '◎', match: '/vigilancia' },
     ],
   },
   {
-    id: 'operacao',
-    label: 'Operação',
+    id: 'mais',
+    label: 'Mais',
     items: [
-      { href: '/alertas', label: 'Alertas', icon: '◉', match: '/alertas' },
-      { href: '/tarefas', label: 'Tarefas', icon: '✓', match: '/tarefas' },
-      { href: '/monitoramento', label: 'Monitoramento', icon: '↻', match: '/monitoramento' },
+      { href: '/rede', label: 'Rede colaborativa', icon: '⧉', match: '/rede' },
+      { href: '/documentos', label: 'Documentos', icon: '▣', match: '/documentos' },
+      { href: '/colaboradores', label: 'Colaboradores', icon: '☰', match: '/colaboradores' },
+      { href: '/alertas', label: 'Histórico de alertas', icon: '◌', match: '/alertas' },
     ],
   },
   {
     id: 'admin',
     label: 'Administração',
+    roles: MOD_ROLES,
     items: [
-      { href: '/fontes', label: 'Fontes', icon: '◎', match: '/fontes' },
-      { href: '/integracoes', label: 'Integrações', icon: '⬡', match: '/integracoes' },
-      { href: '/auditoria', label: 'Auditoria', icon: '◫', match: '/auditoria' },
+      { href: '/fontes', label: 'Fontes', icon: '◎', match: '/fontes', roles: ADMIN_ROLES },
+      { href: '/monitoramento', label: 'Monitoramento', icon: '↻', match: '/monitoramento', roles: ADMIN_ROLES },
+      { href: '/rede/moderacao', label: 'Moderação', icon: '⚖', match: '/rede/moderacao', roles: MOD_ROLES },
+      { href: '/integracoes', label: 'Integrações', icon: '⬡', match: '/integracoes', roles: ADMIN_ROLES },
+      { href: '/auditoria', label: 'Auditoria', icon: '◫', match: '/auditoria', roles: MOD_ROLES },
     ],
   },
 ];
@@ -63,11 +76,17 @@ function isActive(pathname: string, item: NavItem) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
+function canSee(role: string, roles?: string[]) {
+  if (!roles || roles.length === 0) return true;
+  return roles.includes(role);
+}
+
 export default function Shell({ children, title = 'Workspace' }: { children: ReactNode; title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [name, setName] = useState('Administrador');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState('OWNER');
   const [collapsed, setCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -79,6 +98,7 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
         const u = JSON.parse(raw);
         setName(u.name || 'Administrador');
         setEmail(u.email || '');
+        setRole(String(u.role || 'OWNER').toUpperCase());
       } catch {
         /* ignore */
       }
@@ -104,6 +124,18 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
     if (h < 18) return 'Boa tarde';
     return 'Boa noite';
   }, []);
+
+  const visibleGroups = useMemo(
+    () =>
+      groups
+        .filter((g) => canSee(role, g.roles))
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((item) => canSee(role, item.roles)),
+        }))
+        .filter((g) => g.items.length > 0),
+    [role],
+  );
 
   function logout() {
     localStorage.removeItem('cct_token');
@@ -137,7 +169,7 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
           </div>
 
           <nav className="navscroll">
-            {groups.map((g) => (
+            {visibleGroups.map((g) => (
               <div className="navgroup" key={g.id}>
                 {!collapsed ? <div className="navlabel">{g.label}</div> : <div className="navlabel-mini" />}
                 {g.items.map((item) => (
@@ -189,7 +221,7 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
                 <span className="crumbsep">/</span>
                 <b>{title}</b>
               </div>
-              {title === 'Visão geral' ? (
+              {title === 'Hoje' || title === 'Visão geral' ? (
                 <div className="topbar-sub">
                   {greeting}
                   {name ? `, ${name.split(' ')[0]}` : ''}
@@ -206,9 +238,9 @@ export default function Shell({ children, title = 'Workspace' }: { children: Rea
                 <span>Buscar empresas, sindicatos, CCT…</span>
                 <kbd>⌘K</kbd>
               </button>
-              <span className="envchip" title="Ambiente">
-                Operação
-              </span>
+              <Link href="/caixa-de-entrada" className="envchip" title="Caixa de entrada">
+                Caixa
+              </Link>
               {email ? <span className="envchip subtle">{email}</span> : null}
             </div>
           </header>

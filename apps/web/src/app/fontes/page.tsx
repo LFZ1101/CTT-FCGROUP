@@ -5,6 +5,7 @@ import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
 import ModalForm from '../../components/ModalForm';
 import { api } from '../../lib/api';
+import { labelOf } from '../../lib/labels';
 
 const ADAPTERS = [
   { id: 'generic-html', label: 'HTML genérico' },
@@ -83,8 +84,8 @@ export default function Fontes() {
                 <b>{x.name}</b>
                 <span>{x.union?.acronym || 'Fonte geral'}</span>
               </td>
-              <td>{x.type}</td>
-              <td>{x.type === 'MEDIADOR_MTE' ? 'mediador' : adapterLabel(x.config)}</td>
+              <td>{labelOf(x.type)}</td>
+              <td>{x.type === 'MEDIADOR_MTE' ? 'Mediador' : adapterLabel(x.config)}</td>
               <td style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.url}</td>
               <td>
                 {x.lastCheckedAt ? new Date(x.lastCheckedAt).toLocaleString('pt-BR') : 'Ainda não consultada'}

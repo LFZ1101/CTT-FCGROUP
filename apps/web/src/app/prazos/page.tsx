@@ -61,7 +61,7 @@ export default function PrazosPage() {
           description="Oposição, reajuste, contribuições e outros prazos extraídos com evidência."
           action={
             <button className="primary" type="button" disabled={busy} onClick={() => void scan()}>
-              {busy ? 'Gerando…' : 'Gerar alertas de prazo'}
+              {busy ? 'Atualizando…' : 'Atualizar alertas de prazo'}
             </button>
           }
         />
@@ -76,7 +76,7 @@ export default function PrazosPage() {
           headers={['Tipo', 'Descrição', 'Vencimento', 'Instrumento', 'Evidência', 'Confiança']}
           empty={!rows.length}
           emptyTitle="Nenhum prazo crítico no momento"
-          emptyDescription="Quando uma CCT trouxer prazo de oposição, reajuste ou contribuição, ele aparecerá aqui."
+          emptyDescription="Sua carteira não possui prazos com vencimento próximo. Quando um instrumento trouxer oposição, reajuste ou contribuição, ele aparecerá aqui."
         >
           {rows.map((d) => (
             <tr key={d.id}>
@@ -95,8 +95,25 @@ export default function PrazosPage() {
                   '—'
                 )}
               </td>
-              <td>p.{d.sourcePage ?? '—'} · cl.{d.clause?.number || '—'}</td>
-              <td>{Math.round((d.confidence || 0) * 100)}%</td>
+              <td>
+                <div>p.{d.sourcePage ?? '—'} · cl.{d.clause?.number || '—'}</div>
+                {d.sourceExcerpt ? (
+                  <div className="feedmeta">{String(d.sourceExcerpt).slice(0, 90)}</div>
+                ) : null}
+              </td>
+              <td>
+                <b>
+                  {(d.confidence || 0) >= 0.8
+                    ? 'Alta confiança'
+                    : (d.confidence || 0) >= 0.5
+                      ? 'Média confiança'
+                      : 'Baixa confiança'}
+                </b>
+                <div className="feedmeta">
+                  {Math.round((d.confidence || 0) * 100)}% · encontrado na cláusula{' '}
+                  {d.clause?.number || '—'}, página {d.sourcePage ?? '—'}
+                </div>
+              </td>
             </tr>
           ))}
         </DataTable>

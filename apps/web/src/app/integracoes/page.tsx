@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
 import { DataTable } from '../../components/DataTable';
+import { StatusBadge } from '../../components/ui/Status';
 import { api } from '../../lib/api';
+import Link from 'next/link';
 
 export default function IntegracoesPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -32,9 +34,14 @@ export default function IntegracoesPage() {
     <Shell title="Integrações">
       <div className="page">
         <PageHeader
-          eyebrow="Administração · conectores"
-          title="Integrações de folha / ERP"
-          description="Nenhuma sincronização automática é simulada. Enquanto não houver API e credenciais oficiais, use a importação CSV de colaboradores. Aqui você registra interesse e acompanha limitações."
+          eyebrow="Administração"
+          title="Integrações"
+          description="Conexões com folha e ERP. Enquanto não houver conector ativo, use a importação CSV."
+          action={
+            <Link className="primary" href="/empresas/importar">
+              Importar CSV
+            </Link>
+          }
         />
         {msg ? <p className="feedmeta" role="status">{msg}</p> : null}
         <DataTable headers={['Provedor', 'Status', 'Limitação', 'Ação']} empty={!rows.length}>
@@ -44,17 +51,12 @@ export default function IntegracoesPage() {
                 <b>{r.displayName}</b>
               </td>
               <td>
-                <span className="badge warn">
-                  {String(r.connection?.status || r.status || 'UNSUPPORTED')
-                    .replace('UNSUPPORTED', 'Ainda não conectado')
-                    .replace('CONNECTED', 'Conectado')
-                    .replace('ERROR', 'Falhou')}
-                </span>
+                <StatusBadge value={r.connection?.status || r.status || 'UNSUPPORTED'} />
               </td>
               <td>{r.limitation}</td>
               <td>
                 <button type="button" className="ghost" onClick={() => void register(r.provider)}>
-                  Registrar intenção
+                  Registrar interesse
                 </button>
               </td>
             </tr>
