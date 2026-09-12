@@ -1,0 +1,30 @@
+# Netlify — frontend Next.js (apps/web)
+# A API NestJS / Postgres / Redis / Worker NÃO rodam no Netlify.
+# Configure NEXT_PUBLIC_API_URL apontando para a API hospedada (Railway, Render, Fly, etc.).
+
+[build]
+  base = "."
+  command = "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @cct/web build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  PNPM_FLAGS = "--frozen-lockfile"
+  # Opcional: URL pública da API (sem barra no final)
+  # NEXT_PUBLIC_API_URL = "https://sua-api.exemplo.com/api/v1"
+  # Rewrite server-side (só funciona se a API for alcançável no build/runtime do Netlify)
+  # API_INTERNAL_URL = "https://sua-api.exemplo.com"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Se o plugin Next exigir o root do app:
+[functions]
+  directory = "apps/web/.netlify/functions-internal"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

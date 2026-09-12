@@ -1,0 +1,22 @@
+{
+  "name": "cct-intelligence",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @cct/web dev",
+    "dev:api": "pnpm --filter @cct/api start:dev",
+    "dev:worker": "pnpm --filter @cct/worker dev",
+    "build": "pnpm -r --if-present build",
+    "build:api": "pnpm --filter @cct/api build",
+    "build:web": "pnpm --filter @cct/web build",
+    "build:worker": "pnpm --filter @cct/worker build",
+    "db:generate": "pnpm --filter @cct/database prisma generate",
+    "db:push": "pnpm --filter @cct/database prisma db push",
+    "db:migrate": "pnpm --filter @cct/database prisma migrate dev",
+    "db:migrate:deploy": "pnpm --filter @cct/database prisma migrate deploy",
+    "db:seed": "pnpm --filter @cct/database seed",
+    "typecheck": "pnpm --filter @cct/api exec tsc --noEmit && pnpm --filter @cct/worker exec tsc --noEmit && pnpm --filter @cct/web exec tsc --noEmit",
+    "lint": "pnpm typecheck",
+    "test": "pnpm --filter @cct/api test && pnpm --filter @cct/worker test"
+  }
+}

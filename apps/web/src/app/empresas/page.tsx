@@ -1,0 +1,151 @@
+'use client';
+
+import { FormEvent, useEffect, useState } from 'react';
+import Link from 'next/link';
+import Shell from '../../components/Shell';
+import PageHeader from '../../components/PageHeader';
+import { DataTable } from '../../components/DataTable';
+import ModalForm from '../../components/ModalForm';
+import { api } from '../../lib/api';
+
+type Company = {
+  id: string;
+  legalName: string;
+  tradeName?: string | null;
+  cnpj: string;
+  mainCnae?: string | null;
+  city?: string | null;
+  state?: string | null;
+  employeeCount?: number | null;
+  active?: boolean;
+  _count?: { companyUnions?: number; applications?: number; alerts?: number; tasks?: number };
+};
+
+export default function Empresas() {
+  const [rows, setRows] = useState<Company[]>([]);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+
+  const load = () =>
+    api<Company[]>('/companies')
+      .then(setRows)
+      .catch(() => {});
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function add(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    await api('/companies', {
+      method: 'POST',
+      body: JSON.stringify({
+        legalName: f.get('legalName'),
+        tradeName: f.get('tradeName'),
+        cnpj: f.get('cnpj'),
+        mainCnae: f.get('mainCnae'),
+        city: f.get('city'),
+        state: f.get('state'),
+        employeeCount: Number(f.get('employeeCount') || 0),
+      }),
+    });
+    setOpen(false);
+    load();
+  }
+
+  const filtered = rows.filter((x) =>
+    `${x.legalName} ${x.tradeName || ''} ${x.cnpj}`.toLowerCase().includes(q.toLowerCase()),
+  );
+
+  return (
+    <Shell title="Empresas">
+      <div className="page">
+        <PageHeader
+          eyebrow="Carteira"
+          title="Empresas monitoradas"
+          description="Base para enquadramento, instrumentos aplicáveis, alertas e tarefas."
+          action={
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link className="ghost" href="/empresas/importar">
+                Importar CSV
+              </Link>
+              <button className="primary" onClick={() => setOpen(true)}>
+                + Nova empresa
+              </button>
+            </div>
+          }
+        />
+        <div className="toolbar">
+          <input
+            className="search"
+            placeholder="Buscar empresa, CNPJ..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <span className="badge">{filtered.length} registros</span>
+        </div>
+        <DataTable
+          headers={['Empresa', 'CNPJ', 'CNAE principal', 'Localidade', 'Sindicatos', 'Monitoramento']}
+          empty={!filtered.length}
+        >
+          {filtered.map((x) => (
+            <tr key={x.id}>
+              <td className="titlecell">
+                <Link href={`/empresas/${x.id}`}>
+                  <b>{x.tradeName || x.legalName}</b>
+                </Link>
+                <span>{x.legalName}</span>
+              </td>
+              <td>{x.cnpj}</td>
+              <td>{x.mainCnae || '—'}</td>
+              <td>{[x.city, x.state].filter(Boolean).join(' / ') || '—'}</td>
+              <td>{x._count?.companyUnions ?? 0}</td>
+              <td>
+                <span className={`badge ${x.active ? 'ok' : ''}`}>
+                  <i className="statusdot" />
+                  {x.active ? 'Ativo' : 'Inativo'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
+      </div>
+      <ModalForm open={open} title="Cadastrar empresa" onClose={() => setOpen(false)}>
+        <form className="formgrid" onSubmit={add}>
+          <div className="field full">
+            <label>Razão social</label>
+            <input name="legalName" required />
+          </div>
+          <div className="field">
+            <label>Nome fantasia</label>
+            <input name="tradeName" />
+          </div>
+          <div className="field">
+            <label>CNPJ</label>
+            <input name="cnpj" required />
+          </div>
+          <div className="field">
+            <label>CNAE principal</label>
+            <input name="mainCnae" placeholder="0000-0/00" />
+          </div>
+          <div className="field">
+            <label>Colaboradores</label>
+            <input name="employeeCount" type="number" min="0" />
+          </div>
+          <div className="field">
+            <label>Cidade</label>
+            <input name="city" />
+          </div>
+          <div className="field">
+            <label>UF</label>
+            <input name="state" maxLength={2} />
+          </div>
+          <div className="field full">
+            <button className="primary">Salvar empresa</button>
+          </div>
+        </form>
+      </ModalForm>
+    </Shell>
+  );
+}

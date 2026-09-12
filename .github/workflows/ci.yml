@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  # Mesma branch: cancela push+PR duplicados e runs antigos supersedidos
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: cct_intelligence
+          POSTGRES_USER: cct
+          POSTGRES_PASSWORD: cct_dev_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cct -d cct_intelligence"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public
+      REDIS_URL: redis://localhost:6379
+      # Gate Mediador Redis é opt-in; desligado no CI para não prender handles nos testes
+      MEDIADOR_GATE_REDIS: 'false'
+      BOOTSTRAP_OPEN: 'true'
+      JWT_SECRET: ci-test-secret
+      STORAGE_BUCKET: cct-documents
+      STORAGE_ENDPOINT: http://127.0.0.1:9000
+      STORAGE_ACCESS_KEY: cctminio
+      STORAGE_SECRET_KEY: cctminio_dev_password
+      STORAGE_FORCE_PATH_STYLE: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm db:generate
+      - run: pnpm --filter @cct/database exec prisma migrate deploy
+      - name: Typecheck
+        timeout-minutes: 5
+        run: pnpm typecheck
+      - name: Unit / integration tests
+        timeout-minutes: 8
+        run: pnpm test
+      - name: Build
+        timeout-minutes: 8
+        run: pnpm build
+      - name: E2E API smoke
+        timeout-minutes: 5
+        run: bash scripts/e2e-api-smoke.sh
+        env:
+          E2E_PORT: 4010
+          JWT_SECRET: ci-test-secret
+          DATABASE_URL: postgresql://cct:cct_dev_password@localhost:5432/cct_intelligence?schema=public
+          REDIS_URL: redis://localhost:6379
+          MEDIADOR_GATE_REDIS: 'false'
+          BOOTSTRAP_OPEN: 'true'
