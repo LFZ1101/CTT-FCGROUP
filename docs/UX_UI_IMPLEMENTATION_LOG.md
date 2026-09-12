@@ -1,6 +1,7 @@
 # Log de implementação — UX/UI Simplification & Productization
 
 **Branch:** `cursor/cct-intelligence-ux-simplification-310a`  
+**PR:** https://github.com/LFZ1101/CTT-FCGROUP/pull/12  
 **Base:** evolução sobre redesign/productization existentes  
 **Diretriz:** muita capacidade por baixo · pouca complexidade aparente  
 **Modelo mental:** EVENTO → IMPACTO → AÇÃO → EVIDÊNCIA
