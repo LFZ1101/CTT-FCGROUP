@@ -86,7 +86,7 @@ export function DistBars({
   items,
   emptyLabel = 'Sem dados para exibir',
 }: {
-  items: { id: string; label: string; count: number; href?: string }[];
+  items: { id: string; label: string; count: number; href?: string; tone?: 'neutral' | 'ok' | 'warn' | 'danger' | 'info' }[];
   emptyLabel?: string;
 }) {
   const max = Math.max(1, ...items.map((i) => i.count));
@@ -99,7 +99,7 @@ export function DistBars({
             {item.href ? <Link href={item.href}>{item.label}</Link> : <span>{item.label}</span>}
             <b>{item.count}</b>
           </div>
-          <BarMeter value={item.count} max={max} tone="info" label={item.label} />
+          <BarMeter value={item.count} max={max} tone={item.tone || 'info'} label={item.label} />
         </li>
       ))}
     </ul>
