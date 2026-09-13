@@ -1,13 +1,39 @@
 'use client';
-import { FormEvent, useEffect, useState } from 'react';
+
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Shell from '../../components/Shell';
 import PageHeader from '../../components/PageHeader';
-import { DataTable } from '../../components/DataTable';
 import ModalForm from '../../components/ModalForm';
+import { EmptyState, StatusBadge } from '../../components/ui/Status';
+import { KpiCard, TaskVisualCard } from '../../components/ui/Visual';
 import { api } from '../../lib/api';
-import { StatusBadge } from '../../components/ui/Status';
-import { labelOf } from '../../lib/labels';
+
+function daysUntil(iso?: string | null): number {
+  if (!iso) return Number.POSITIVE_INFINITY;
+  const due = new Date(iso);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - now.getTime()) / 86400000);
+}
+
+function dueTone(days: number): 'ok' | 'warn' | 'danger' | 'neutral' {
+  if (!Number.isFinite(days)) return 'neutral';
+  if (days < 0) return 'danger';
+  if (days <= 3) return 'danger';
+  if (days <= 7) return 'warn';
+  return 'ok';
+}
+
+function dueLabel(iso?: string | null): string | undefined {
+  if (!iso) return undefined;
+  const d = daysUntil(iso);
+  if (d < 0) return `${Math.abs(d)}d atrasado`;
+  if (d === 0) return 'Hoje';
+  if (d === 1) return 'Amanhã';
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
 
 export default function Tarefas() {
   const [rows, setRows] = useState<any[]>([]);
@@ -54,8 +80,10 @@ export default function Tarefas() {
 
   const filtered = rows.filter((x) => {
     const due = x.dueAt ? new Date(x.dueAt) : null;
-    const today = new Date(); today.setHours(0,0,0,0);
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     if (taskFilter === 'DONE') return x.status === 'DONE';
     if (taskFilter === 'OPEN') return x.status !== 'DONE';
     if (taskFilter === 'TODAY') return due && due >= today && due < tomorrow;
@@ -64,14 +92,27 @@ export default function Tarefas() {
     return true;
   });
 
-  return (
+  const stats = useMemo(() => {
+    const openCount = rows.filter((x) => x.status !== 'DONE').length;
+    const overdue = rows.filter((x) => {
+      if (!x.dueAt || x.status === 'DONE') return false;
+      return daysUntil(x.dueAt) < 0;
+    }).length;
+    const critical = rows.filter((x) => Number(x.priority) <= 1 && x.status !== 'DONE').length;
+    const todayCount = rows.filter((x) => {
+      if (!x.dueAt || x.status === 'DONE') return false;
+      return daysUntil(x.dueAt) === 0;
+    }).length;
+    return { openCount, overdue, critical, todayCount };
+  }, [rows]);
 
+  return (
     <Shell title="Tarefas">
-      <div className="page">
+      <div className="page dash-visual">
         <PageHeader
           eyebrow="Operação do DP"
           title="Tarefas"
-          description="Ações geradas a partir de convenções, validações e impactos na carteira."
+          description="Quadro visual das ações geradas por convenções, validações e impactos na carteira."
           action={
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Link className="secondary" href="/caixa-de-entrada">
@@ -86,7 +127,51 @@ export default function Tarefas() {
             </div>
           }
         />
-        {msg ? <p className="feedmeta" style={{ marginBottom: 12 }}>{msg}</p> : null}
+        {msg ? (
+          <p className="feedmeta" style={{ marginBottom: 12 }}>
+            {msg}
+          </p>
+        ) : null}
+
+        <section className="kpi-grid" aria-label="Resumo de tarefas">
+          <KpiCard
+            href="/tarefas"
+            label="Em aberto"
+            value={stats.openCount}
+            hint="pendentes de conclusão"
+            tone={stats.openCount > 0 ? 'warn' : 'ok'}
+            icon="☑"
+            meter={Math.min(100, stats.openCount * 12)}
+          />
+          <KpiCard
+            href="/tarefas"
+            label="Para hoje"
+            value={stats.todayCount}
+            hint="vencem hoje"
+            tone={stats.todayCount > 0 ? 'warn' : 'ok'}
+            icon="◷"
+            meter={Math.min(100, stats.todayCount * 20)}
+          />
+          <KpiCard
+            href="/tarefas"
+            label="Atrasadas"
+            value={stats.overdue}
+            hint="passaram do prazo"
+            tone={stats.overdue > 0 ? 'danger' : 'ok'}
+            icon="!"
+            meter={Math.min(100, stats.overdue * 20)}
+          />
+          <KpiCard
+            href="/tarefas"
+            label="Críticas"
+            value={stats.critical}
+            hint="prioridade máxima"
+            tone={stats.critical > 0 ? 'danger' : 'ok'}
+            icon="▲"
+            meter={Math.min(100, stats.critical * 20)}
+          />
+        </section>
+
         <div className="filterbar">
           {[
             ['ALL', 'Todas'],
@@ -96,52 +181,64 @@ export default function Tarefas() {
             ['CRITICAL', 'Críticas'],
             ['DONE', 'Concluídas'],
           ].map(([id, label]) => (
-            <button key={id} type="button" className={`chipbtn ${taskFilter === id ? 'active' : ''}`} onClick={() => setTaskFilter(id)}>
+            <button
+              key={id}
+              type="button"
+              className={`chipbtn ${taskFilter === id ? 'active' : ''}`}
+              onClick={() => setTaskFilter(id)}
+            >
               {label}
             </button>
           ))}
+          <span className="filter-count">{filtered.length} tarefa(s)</span>
         </div>
-        <DataTable
-          headers={['Tarefa', 'Empresa', 'Prioridade', 'Prazo', 'Status', 'Ação']}
-          empty={!filtered.length}
-          emptyTitle={
-            taskFilter === 'OVERDUE'
-              ? 'Nenhuma tarefa atrasada'
-              : taskFilter === 'TODAY'
-                ? 'Nenhuma tarefa para hoje'
-                : taskFilter === 'DONE'
-                  ? 'Nenhuma tarefa concluída nesta lista'
-                  : taskFilter === 'CRITICAL'
-                    ? 'Nenhuma tarefa crítica aberta'
-                    : 'Nenhuma tarefa pendente'
-          }
-          emptyDescription="Novas ações aparecerão aqui quando houver instrumentos, prazos ou revisões que exijam acompanhamento. Enquanto isso, consulte a Caixa de entrada."
-        >
-          {filtered.map((x) => (
-            <tr key={x.id}>
-              <td className="titlecell">
-                <b>{x.title}</b>
-                <span>{x.description || x.instrument?.title || 'Sem descrição'}</span>
-              </td>
-              <td>{x.company?.tradeName || x.company?.legalName || 'Geral'}</td>
-              <td>{Number(x.priority) <= 1 ? 'Crítica' : Number(x.priority) === 2 ? 'Alta' : Number(x.priority) === 3 ? 'Normal' : Number(x.priority) === 4 ? 'Baixa' : 'Planejada'}</td>
-              <td>{x.dueAt ? new Date(x.dueAt).toLocaleDateString('pt-BR') : '—'}</td>
-              <td>
-                <StatusBadge value={x.status} />
-              </td>
-              <td>
+
+        {filtered.length ? (
+          <div className="task-board-visual">
+            {filtered.map((x) => (
+              <div key={x.id} className="task-board-row">
+                <TaskVisualCard
+                  href="/tarefas"
+                  title={x.title}
+                  subtitle={x.description || x.instrument?.title || undefined}
+                  company={x.company?.tradeName || x.company?.legalName || 'Geral'}
+                  assignee={x.assignee?.name || x.assignee?.email || 'Sem responsável'}
+                  dueLabel={dueLabel(x.dueAt)}
+                  dueTone={dueTone(daysUntil(x.dueAt))}
+                  priority={x.priority}
+                  status={<StatusBadge value={x.status} />}
+                />
                 {x.status !== 'DONE' ? (
-                  <button className="secondary" onClick={() => setStatus(x.id, 'DONE')}>
+                  <button className="secondary" type="button" onClick={() => void setStatus(x.id, 'DONE')}>
                     Concluir
                   </button>
-                ) : (
-                  '—'
-                )}
-              </td>
-            </tr>
-          ))}
-        </DataTable>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title={
+              taskFilter === 'OVERDUE'
+                ? 'Nenhuma tarefa atrasada'
+                : taskFilter === 'TODAY'
+                  ? 'Nenhuma tarefa para hoje'
+                  : taskFilter === 'DONE'
+                    ? 'Nenhuma tarefa concluída nesta lista'
+                    : taskFilter === 'CRITICAL'
+                      ? 'Nenhuma tarefa crítica aberta'
+                      : 'Nenhuma tarefa pendente'
+            }
+            description="Novas ações aparecerão aqui em cartões quando houver instrumentos, prazos ou revisões. Enquanto isso, consulte a Caixa de entrada."
+            action={
+              <Link className="secondary" href="/caixa-de-entrada">
+                Abrir Caixa de entrada
+              </Link>
+            }
+          />
+        )}
       </div>
+
       <ModalForm open={open} title="Criar tarefa" onClose={() => setOpen(false)}>
         <form className="formgrid" onSubmit={add}>
           <div className="field full">

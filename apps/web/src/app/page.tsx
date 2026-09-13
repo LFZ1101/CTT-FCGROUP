@@ -5,6 +5,18 @@ import Link from 'next/link';
 import Shell from '../components/Shell';
 import PageHeader from '../components/PageHeader';
 import { EmptyState, Skeleton, StatusBadge } from '../components/ui/Status';
+import {
+  AttentionVisual,
+  CoverageRing,
+  DeadlineRail,
+  DistBars,
+  KpiCard,
+  PipelineTrack,
+  QuickTiles,
+  SegmentBar,
+  TaskVisualCard,
+  UnionVisualCard,
+} from '../components/ui/Visual';
 import { api } from '../lib/api';
 import { labelOf } from '../lib/labels';
 
@@ -18,6 +30,8 @@ const fallback = {
     unreadAlerts: 0,
     openTasks: 0,
     docsReadyForReview: 0,
+    docsFailed: 0,
+    instrumentsExpiringSoon: 0,
     criticalDeadlines: 0,
     coveragePct: 0,
     newInstruments: 0,
@@ -27,6 +41,15 @@ const fallback = {
   taskList: [] as any[],
   upcomingDeadlines: [] as any[],
   unionsOverview: [] as any[],
+  pipeline: [] as any[],
+  coverage: {
+    coveragePct: 0,
+    monitoredCompanies: 0,
+    totalCompanies: 0,
+    companiesWithoutUnion: 0,
+    companiesWithoutSource: 0,
+    explanation: '',
+  },
   taskBoard: {
     assignedCount: 0,
     unassignedCount: 0,
@@ -41,6 +64,40 @@ function severityRank(item: any): number {
   if (s.includes('CRITICAL') || s.includes('FAIL')) return 0;
   if (s.includes('WARN') || s.includes('PENDING') || s.includes('NEW')) return 1;
   return 2;
+}
+
+function daysUntil(iso?: string | null): number {
+  if (!iso) return Number.POSITIVE_INFINITY;
+  const due = new Date(iso);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - now.getTime()) / 86400000);
+}
+
+function dueTone(days: number): 'ok' | 'warn' | 'danger' | 'neutral' {
+  if (!Number.isFinite(days)) return 'neutral';
+  if (days < 0) return 'danger';
+  if (days <= 3) return 'danger';
+  if (days <= 7) return 'warn';
+  return 'ok';
+}
+
+function dueLabel(iso?: string | null): string | undefined {
+  if (!iso) return undefined;
+  const d = daysUntil(iso);
+  if (d < 0) return `${Math.abs(d)}d atrasado`;
+  if (d === 0) return 'Hoje';
+  if (d === 1) return 'Amanhã';
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+function statusTone(status: string): string {
+  const s = String(status || '').toUpperCase();
+  if (s.includes('DONE') || s.includes('VALID') || s.includes('READY') || s.includes('SUCCESS')) return 'ok';
+  if (s.includes('FAIL') || s.includes('BLOCK') || s.includes('CRIT')) return 'danger';
+  if (s.includes('PEND') || s.includes('WARN') || s.includes('PROGRESS')) return 'warn';
+  return 'info';
 }
 
 export default function Home() {
@@ -74,10 +131,13 @@ export default function Home() {
   }, []);
 
   const m = d.metrics || fallback.metrics;
+  const coverage = d.coverage || fallback.coverage;
   const taskList: any[] = d.taskList || [];
   const deadlines: any[] = d.upcomingDeadlines || [];
   const unions: any[] = d.unionsOverview || [];
   const board = d.taskBoard || fallback.taskBoard;
+  const pipeline: any[] = d.pipeline || [];
+  const recent: any[] = d.recent || [];
 
   const companyOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -118,38 +178,40 @@ export default function Home() {
   );
 
   const filtersActive = companyId !== 'ALL' || assigneeId !== 'ALL' || onlyMine;
+  const coveragePct = Number(coverage.coveragePct ?? m.coveragePct ?? 0);
+  const openTasks = Number(m.openTasks ?? filteredTasks.length);
+  const criticalDeadlines = Number(m.criticalDeadlines ?? 0);
+  const unread = Number(m.unreadAlerts ?? 0);
+  const docsReady = Number(m.docsReadyForReview ?? 0);
 
-  const indicators = [
-    {
-      k: 'Tarefas em aberto',
-      v: m.openTasks ?? filteredTasks.length,
-      f: `${board.unassignedCount || 0} sem responsável`,
-      href: '/tarefas',
-      tone: (m.openTasks ?? 0) > 0 ? 'warn' : '',
-    },
-    {
-      k: 'Prazos próximos',
-      v: m.criticalDeadlines ?? deadlines.length,
-      f: 'próximos 7 dias',
-      href: '/prazos',
-      tone: (m.criticalDeadlines ?? 0) > 0 ? 'danger' : '',
-    },
-    {
-      k: 'Notificações',
-      v: m.unreadAlerts ?? 0,
-      f: 'itens na caixa de entrada',
-      href: '/caixa-de-entrada',
-      tone: (m.unreadAlerts ?? 0) > 0 ? 'warn' : '',
-    },
-  ];
+  const statusSegments = (board.byStatus || []).map((row: any) => ({
+    id: row.status,
+    label: labelOf(row.status),
+    count: row.count,
+    tone: statusTone(row.status),
+  }));
+
+  const deadlineItems = deadlines.slice(0, 8).map((dl: any) => ({
+    id: dl.id,
+    title: `${labelOf(dl.deadlineType)} · ${dl.instrument?.title || 'Instrumento'}`,
+    when: dl.dueDate ? new Date(dl.dueDate).toLocaleDateString('pt-BR') : '—',
+    daysLeft: daysUntil(dl.dueDate),
+    href: dl.instrumentId ? `/instrumentos/${dl.instrumentId}` : '/prazos',
+  }));
+
+  const pipelineSteps = pipeline.slice(0, 6).map((p: any) => ({
+    id: p.status,
+    label: labelOf(p.status),
+    count: p.count,
+  }));
 
   return (
     <Shell title="Dashboard">
-      <div className="page">
+      <div className="page dash-visual">
         <PageHeader
           eyebrow="Visão geral"
           title="Dashboard"
-          description="Tarefas, sindicatos, prazos e o que exige sua atenção — no mesmo modelo mental do seu dia a dia."
+          description="Leitura rápida do que importa: cobertura, prazos, tarefas e alertas — com atalho direto para agir."
           action={
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Link className="secondary" href="/empresas">
@@ -162,362 +224,431 @@ export default function Home() {
           }
         />
 
-        <div className="tabs" role="tablist" aria-label="Visões do dashboard">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'tasks'}
-            className={`tab ${tab === 'tasks' ? 'active' : ''}`}
-            onClick={() => setTab('tasks')}
-          >
-            Tarefas
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'unions'}
-            className={`tab ${tab === 'unions' ? 'active' : ''}`}
-            onClick={() => setTab('unions')}
-          >
-            Sindicatos
-          </button>
-        </div>
-
-        <div className="filterbar dash-filters" aria-label="Filtros do dashboard">
-          <label className="filter-field">
-            <span>Empresa</span>
-            <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} aria-label="Filtrar por empresa">
-              <option value="ALL">Todas as empresas</option>
-              {companyOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="filter-field">
-            <span>Responsável</span>
-            <select
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-              aria-label="Filtrar por responsável"
-            >
-              <option value="ALL">Todos</option>
-              <option value="UNASSIGNED">Sem responsável</option>
-              {assigneeOptions.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="check-inline">
-            <input
-              type="checkbox"
-              checked={onlyMine}
-              onChange={(e) => setOnlyMine(e.target.checked)}
-            />
-            Somente meus itens
-          </label>
-          {filtersActive ? (
-            <button
-              type="button"
-              className="chipbtn"
-              onClick={() => {
-                setCompanyId('ALL');
-                setAssigneeId('ALL');
-                setOnlyMine(false);
-              }}
-            >
-              Limpar filtros
-            </button>
-          ) : null}
-          <span className="filter-count">
-            {tab === 'tasks'
-              ? `${filteredTasks.length} tarefa(s)`
-              : `${unions.length} sindicato(s)`}
-          </span>
-        </div>
-
-        <section className="metrics metrics-compact metrics-3">
-          {indicators.map((x) => (
-            <Link href={x.href} key={x.k} className={`metric ${x.tone ? 'alertish' : ''}`}>
-              <div className="k">{x.k}</div>
-              <div className={`v ${x.tone || ''}`}>{loading ? '…' : x.v}</div>
-              <div className="f">{x.f}</div>
-            </Link>
-          ))}
-        </section>
-
         {loading ? (
-          <div style={{ marginTop: 16 }}>
-            <Skeleton rows={6} />
-          </div>
+          <Skeleton rows={8} />
         ) : error ? (
-          <div className="errorstate" style={{ marginTop: 16 }}>
+          <div className="errorstate">
             <strong>Não foi possível carregar o dashboard</strong>
             <p>{error}</p>
           </div>
-        ) : tab === 'tasks' ? (
-          <div className="dash-grid" style={{ marginTop: 16 }}>
-            <section className="panel">
-              <div className="panelhead">
-                <h2>Tarefas em aberto</h2>
-                <Link href="/tarefas">ver todas</Link>
-              </div>
-              {filteredTasks.length ? (
-                <div className="tablewrap compact">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Tarefa</th>
-                        <th>Empresa</th>
-                        <th>Responsável</th>
-                        <th>Prazo</th>
-                        <th>Status</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTasks.slice(0, 10).map((t) => (
-                        <tr key={t.id}>
-                          <td className="titlecell">
-                            <b>{t.title}</b>
-                            <span>{t.instrument?.title || t.description || '—'}</span>
-                          </td>
-                          <td>
-                            {t.company ? (
-                              <Link href={`/empresas/${t.company.id}`}>
-                                {t.company.tradeName || t.company.legalName}
-                              </Link>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td>{t.assignee?.name || t.assignee?.email || 'Sem responsável'}</td>
-                          <td>{t.dueAt ? new Date(t.dueAt).toLocaleDateString('pt-BR') : '—'}</td>
-                          <td>
-                            <StatusBadge value={t.status} />
-                          </td>
-                          <td>
-                            <Link className="secondary" href="/tarefas">
-                              Abrir
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyState
-                  title="Nenhuma tarefa em aberto neste filtro"
-                  description="Quando houver CCT/ACT, prazos ou revisões para acompanhar, as tarefas aparecerão aqui."
-                  action={
-                    <Link className="secondary" href="/caixa-de-entrada">
-                      Ver notificações
-                    </Link>
-                  }
-                />
-              )}
-            </section>
-
-            <aside className="dash-side">
-              <section className="panel">
-                <div className="panelhead">
-                  <h2>Distribuição</h2>
-                </div>
-                <div className="dist-block">
-                  <div className="dist-row">
-                    <span>Com responsável</span>
-                    <b>{board.assignedCount ?? 0}</b>
-                  </div>
-                  <div className="dist-row">
-                    <span>Sem responsável</span>
-                    <b>{board.unassignedCount ?? 0}</b>
-                  </div>
-                </div>
-                <div className="dist-title">Empresas com mais tarefas</div>
-                {(board.byCompany || []).length ? (
-                  <ul className="dist-list">
-                    {(board.byCompany || []).slice(0, 5).map((row: any) => (
-                      <li key={row.id || row.name}>
-                        <span>{row.name}</span>
-                        <b>{row.count}</b>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="feedmeta" style={{ padding: '0 14px 12px' }}>
-                    Sem distribuição por empresa no momento.
-                  </p>
-                )}
-                {(board.byStatus || []).length ? (
-                  <>
-                    <div className="dist-title">Por status</div>
-                    <ul className="dist-list">
-                      {(board.byStatus || []).map((row: any) => (
-                        <li key={row.status}>
-                          <span>{labelOf(row.status)}</span>
-                          <b>{row.count}</b>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-              </section>
-
-              <section className="panel">
-                <div className="panelhead">
-                  <h2>Exige atenção</h2>
-                  <Link href="/caixa-de-entrada">notificações</Link>
-                </div>
-                {attention.length ? (
-                  <div className="attention-board" style={{ padding: 12 }}>
-                    {attention.slice(0, 5).map((a: any) => (
-                      <div className="attention-card priority-med" key={a.code || a.text}>
-                        <div>
-                          <b>
-                            <Link href={a.href || '/caixa-de-entrada'}>{a.text}</Link>
-                          </b>
-                          <span>{labelOf(a.severity)}</span>
-                        </div>
-                        <Link className="secondary" href={a.href || '/caixa-de-entrada'}>
-                          Abrir
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    title="Nada urgente agora"
-                    description="Novas CCTs, prazos e falhas de monitoramento aparecem aqui."
-                  />
-                )}
-              </section>
-
-              <section className="panel">
-                <div className="panelhead">
-                  <h2>Próximos prazos</h2>
-                  <Link href="/prazos">central de prazos</Link>
-                </div>
-                {deadlines.length ? (
-                  <ul className="dist-list">
-                    {deadlines.slice(0, 6).map((dl: any) => (
-                      <li key={dl.id}>
-                        <span>
-                          <b>{labelOf(dl.deadlineType)}</b>
-                          <br />
-                          <small>
-                            {dl.instrument?.title || 'Instrumento'} ·{' '}
-                            {dl.dueDate ? new Date(dl.dueDate).toLocaleDateString('pt-BR') : '—'}
-                          </small>
-                        </span>
-                        <Link href={dl.instrumentId ? `/instrumentos/${dl.instrumentId}` : '/prazos'}>
-                          Ver
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <EmptyState
-                    title="Nenhum prazo próximo"
-                    description="Prazos de oposição, reajuste e contribuições aparecerão aqui."
-                  />
-                )}
-              </section>
-            </aside>
-          </div>
         ) : (
-          <div className="dash-grid" style={{ marginTop: 16 }}>
-            <section className="panel">
-              <div className="panelhead">
-                <h2>Visão sindical</h2>
-                <Link href="/sindicatos">ver sindicatos</Link>
-              </div>
-              {unions.length ? (
-                <div className="tablewrap compact">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Sindicato</th>
-                        <th>Tipo</th>
-                        <th>Empresas</th>
-                        <th>Instrumentos</th>
-                        <th>Fontes</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unions.map((u) => (
-                        <tr key={u.id}>
-                          <td className="titlecell">
-                            <b>
-                              <Link href={`/sindicatos/${u.id}`}>{u.acronym || u.name}</Link>
-                            </b>
-                            <span>{u.name}</span>
-                          </td>
-                          <td>{labelOf(u.scope)}</td>
-                          <td>{u._count?.companies ?? 0}</td>
-                          <td>{u._count?.parties ?? 0}</td>
-                          <td>{u._count?.sources ?? 0}</td>
-                          <td>
-                            <Link className="secondary" href={`/sindicatos/${u.id}`}>
-                              Abrir
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          <>
+            <section className="pulse-strip" aria-label="Pulso da carteira">
+              <div className="pulse-coverage">
+                <CoverageRing pct={coveragePct} />
+                <div>
+                  <b>Saúde da carteira</b>
+                  <p>
+                    {coverage.explanation ||
+                      `${coverage.monitoredCompanies ?? 0}/${coverage.totalCompanies ?? 0} empresas monitoradas`}
+                  </p>
+                  <div className="pulse-chips">
+                    <span className="pulse-chip">
+                      {m.companies ?? 0} empresas
+                    </span>
+                    <span className="pulse-chip">
+                      {m.instruments ?? 0} instrumentos
+                    </span>
+                    <span className={`pulse-chip ${docsReady ? 'warn' : ''}`}>
+                      {docsReady} docs p/ revisão
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                <EmptyState
-                  title="Nenhum sindicato na carteira"
-                  description="Cadastre ou vincule sindicatos às empresas para acompanhar acordos e fontes."
-                  action={
-                    <Link className="primary" href="/sindicatos">
-                      Ir para Sindicatos
-                    </Link>
-                  }
-                />
-              )}
+              </div>
+              <QuickTiles
+                items={[
+                  {
+                    href: '/caixa-de-entrada',
+                    title: 'Caixa de entrada',
+                    hint: `${unread} não lida(s)`,
+                    icon: '◈',
+                  },
+                  {
+                    href: '/tarefas',
+                    title: 'Tarefas',
+                    hint: `${openTasks} em aberto`,
+                    icon: '☑',
+                  },
+                  {
+                    href: '/prazos',
+                    title: 'Prazos',
+                    hint: `${criticalDeadlines} nos próximos 7 dias`,
+                    icon: '◷',
+                  },
+                  {
+                    href: '/vigilancia',
+                    title: 'Monitoramento',
+                    hint: coveragePct >= 80 ? 'Cobertura ok' : 'Revisar fontes',
+                    icon: '◎',
+                  },
+                ]}
+              />
             </section>
 
-            <aside className="dash-side">
-              <section className="panel">
-                <div className="panelhead">
-                  <h2>Atalhos da carteira</h2>
+            <section className="kpi-grid" aria-label="Indicadores">
+              <KpiCard
+                href="/tarefas"
+                label="Tarefas em aberto"
+                value={openTasks}
+                hint={`${board.unassignedCount || 0} sem responsável`}
+                tone={openTasks > 0 ? 'warn' : 'ok'}
+                icon="☑"
+                meter={Math.min(100, openTasks * 12)}
+              />
+              <KpiCard
+                href="/prazos"
+                label="Prazos críticos"
+                value={criticalDeadlines}
+                hint="próximos 7 dias"
+                tone={criticalDeadlines > 0 ? 'danger' : 'ok'}
+                icon="◷"
+                meter={Math.min(100, criticalDeadlines * 18)}
+              />
+              <KpiCard
+                href="/caixa-de-entrada"
+                label="Notificações"
+                value={unread}
+                hint="itens na caixa de entrada"
+                tone={unread > 0 ? 'warn' : 'ok'}
+                icon="◈"
+                meter={Math.min(100, unread * 4)}
+              />
+              <KpiCard
+                href="/vigilancia"
+                label="Cobertura"
+                value={`${coveragePct}%`}
+                hint={
+                  coverage.companiesWithoutSource
+                    ? `${coverage.companiesWithoutSource} sem fonte`
+                    : 'carteira monitorada'
+                }
+                tone={coveragePct >= 80 ? 'ok' : coveragePct >= 50 ? 'warn' : 'danger'}
+                icon="◎"
+                meter={coveragePct}
+              />
+            </section>
+
+            <div className="tabs" role="tablist" aria-label="Visões do dashboard">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'tasks'}
+                className={`tab ${tab === 'tasks' ? 'active' : ''}`}
+                onClick={() => setTab('tasks')}
+              >
+                Operação
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'unions'}
+                className={`tab ${tab === 'unions' ? 'active' : ''}`}
+                onClick={() => setTab('unions')}
+              >
+                Carteira sindical
+              </button>
+            </div>
+
+            <div className="filterbar dash-filters" aria-label="Filtros do dashboard">
+              <label className="filter-field">
+                <span>Empresa</span>
+                <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} aria-label="Filtrar por empresa">
+                  <option value="ALL">Todas as empresas</option>
+                  {companyOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="filter-field">
+                <span>Responsável</span>
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  aria-label="Filtrar por responsável"
+                >
+                  <option value="ALL">Todos</option>
+                  <option value="UNASSIGNED">Sem responsável</option>
+                  {assigneeOptions.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="check-inline">
+                <input
+                  type="checkbox"
+                  checked={onlyMine}
+                  onChange={(e) => setOnlyMine(e.target.checked)}
+                />
+                Somente meus itens
+              </label>
+              {filtersActive ? (
+                <button
+                  type="button"
+                  className="chipbtn"
+                  onClick={() => {
+                    setCompanyId('ALL');
+                    setAssigneeId('ALL');
+                    setOnlyMine(false);
+                  }}
+                >
+                  Limpar filtros
+                </button>
+              ) : null}
+              <span className="filter-count">
+                {tab === 'tasks'
+                  ? `${filteredTasks.length} tarefa(s)`
+                  : `${unions.length} sindicato(s)`}
+              </span>
+            </div>
+
+            {tab === 'tasks' ? (
+              <div className="dash-grid visual">
+                <div className="dash-main-stack">
+                  <section className="panel">
+                    <div className="panelhead">
+                      <h2>Exige atenção</h2>
+                      <Link href="/caixa-de-entrada">notificações</Link>
+                    </div>
+                    <div style={{ padding: 14 }}>
+                      <AttentionVisual
+                        items={attention.slice(0, 6).map((a: any) => ({
+                          id: a.code || a.text,
+                          text: a.text,
+                          severity: a.severity,
+                          href: a.href || '/caixa-de-entrada',
+                        }))}
+                      />
+                    </div>
+                  </section>
+
+                  <section className="panel">
+                    <div className="panelhead">
+                      <h2>Tarefas em aberto</h2>
+                      <Link href="/tarefas">ver todas</Link>
+                    </div>
+                    {filteredTasks.length ? (
+                      <div className="task-vlist">
+                        {filteredTasks.slice(0, 8).map((t) => (
+                          <TaskVisualCard
+                            key={t.id}
+                            href="/tarefas"
+                            title={t.title}
+                            subtitle={t.instrument?.title || t.description || undefined}
+                            company={t.company?.tradeName || t.company?.legalName}
+                            assignee={t.assignee?.name || t.assignee?.email || 'Sem responsável'}
+                            dueLabel={dueLabel(t.dueAt)}
+                            dueTone={dueTone(daysUntil(t.dueAt))}
+                            priority={t.priority}
+                            status={<StatusBadge value={t.status} />}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        title="Nenhuma tarefa em aberto neste filtro"
+                        description="Quando houver CCT/ACT, prazos ou revisões para acompanhar, as tarefas aparecem aqui em cartões — com prazo e responsável visíveis."
+                        action={
+                          <Link className="secondary" href="/caixa-de-entrada">
+                            Ver notificações
+                          </Link>
+                        }
+                      />
+                    )}
+                  </section>
+
+                  {pipelineSteps.length ? (
+                    <section className="panel">
+                      <div className="panelhead">
+                        <h2>Fluxo documental</h2>
+                        <Link href="/documentos">documentos</Link>
+                      </div>
+                      <div style={{ padding: '8px 16px 18px' }}>
+                        <PipelineTrack steps={pipelineSteps} />
+                      </div>
+                    </section>
+                  ) : null}
                 </div>
-                <div className="attention" style={{ padding: 8 }}>
-                  <div className="attn">
-                    <strong>
-                      <Link href="/empresas">Empresas</Link>
-                    </strong>
-                    <p>{m.companies ?? 0} na carteira · buscar por nome ou CNPJ</p>
+
+                <aside className="dash-side">
+                  <section className="panel">
+                    <div className="panelhead">
+                      <h2>Distribuição</h2>
+                    </div>
+                    <div className="dist-block">
+                      <div className="assign-split">
+                        <div>
+                          <span>Com responsável</span>
+                          <b>{board.assignedCount ?? 0}</b>
+                        </div>
+                        <div>
+                          <span>Sem responsável</span>
+                          <b>{board.unassignedCount ?? 0}</b>
+                        </div>
+                      </div>
+                      <SegmentBar
+                        segments={[
+                          {
+                            id: 'assigned',
+                            label: 'Com responsável',
+                            count: board.assignedCount ?? 0,
+                            tone: 'ok',
+                          },
+                          {
+                            id: 'unassigned',
+                            label: 'Sem responsável',
+                            count: board.unassignedCount ?? 0,
+                            tone: 'warn',
+                          },
+                        ]}
+                      />
+                    </div>
+                    <div className="dist-title">Empresas com mais tarefas</div>
+                    <div style={{ padding: '0 14px 12px' }}>
+                      <DistBars
+                        items={(board.byCompany || []).slice(0, 5).map((row: any) => ({
+                          id: row.id || row.name,
+                          label: row.name,
+                          count: row.count,
+                          href: row.id ? `/empresas/${row.id}` : undefined,
+                        }))}
+                        emptyLabel="Sem distribuição por empresa no momento."
+                      />
+                    </div>
+                    {statusSegments.length ? (
+                      <>
+                        <div className="dist-title">Por status</div>
+                        <div style={{ padding: '0 14px 14px' }}>
+                          <SegmentBar segments={statusSegments} />
+                        </div>
+                      </>
+                    ) : null}
+                  </section>
+
+                  <section className="panel">
+                    <div className="panelhead">
+                      <h2>Linha do tempo de prazos</h2>
+                      <Link href="/prazos">central</Link>
+                    </div>
+                    <div style={{ padding: '4px 16px 16px' }}>
+                      <DeadlineRail items={deadlineItems} />
+                    </div>
+                  </section>
+
+                  <section className="panel">
+                    <div className="panelhead">
+                      <h2>Atividade recente</h2>
+                      <Link href="/caixa-de-entrada">ver tudo</Link>
+                    </div>
+                    {recent.length ? (
+                      <ul className="activity-feed">
+                        {recent.slice(0, 6).map((a: any) => (
+                          <li key={a.id}>
+                            <span className={`activity-dot tone-${statusTone(a.severity || a.type)}`} />
+                            <div>
+                              <b>{a.title || labelOf(a.type)}</b>
+                              <span>
+                                {a.company?.tradeName || a.company?.legalName || a.instrument?.title || 'Carteira'}
+                                {' · '}
+                                {a.createdAt
+                                  ? new Date(a.createdAt).toLocaleString('pt-BR', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : '—'}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="visual-empty" style={{ padding: '0 14px 14px' }}>
+                        Sem atividade recente.
+                      </p>
+                    )}
+                  </section>
+                </aside>
+              </div>
+            ) : (
+              <div className="dash-grid visual">
+                <section className="panel">
+                  <div className="panelhead">
+                    <h2>Mapa sindical</h2>
+                    <Link href="/sindicatos">ver sindicatos</Link>
                   </div>
-                  <div className="attn">
-                    <strong>
-                      <Link href="/instrumentos">Instrumentos</Link>
-                    </strong>
-                    <p>CCTs, ACTs e outros acordos sindicais aplicáveis</p>
-                  </div>
-                  <div className="attn">
-                    <strong>
-                      <Link href="/empresas/importar">Importações</Link>
-                    </strong>
-                    <p>Baixar modelo, validar CSV e carregar empresas</p>
-                  </div>
-                  <div className="attn">
-                    <strong>
-                      <Link href="/vigilancia">Monitoramento</Link>
-                    </strong>
-                    <p>Acompanhe automaticamente se a carteira está protegida</p>
-                  </div>
-                </div>
-              </section>
-            </aside>
-          </div>
+                  {unions.length ? (
+                    <div className="union-grid">
+                      {unions.map((u) => (
+                        <UnionVisualCard
+                          key={u.id}
+                          href={`/sindicatos/${u.id}`}
+                          name={u.name}
+                          acronym={u.acronym}
+                          scope={labelOf(u.scope)}
+                          companies={u._count?.companies ?? 0}
+                          instruments={u._count?.parties ?? 0}
+                          sources={u._count?.sources ?? 0}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="Nenhum sindicato na carteira"
+                      description="Cadastre ou vincule sindicatos às empresas para acompanhar acordos e fontes."
+                      action={
+                        <Link className="primary" href="/sindicatos">
+                          Ir para Sindicatos
+                        </Link>
+                      }
+                    />
+                  )}
+                </section>
+
+                <aside className="dash-side">
+                  <section className="panel">
+                    <div className="panelhead">
+                      <h2>Atalhos da carteira</h2>
+                    </div>
+                    <div style={{ padding: 14 }}>
+                      <QuickTiles
+                        items={[
+                          {
+                            href: '/empresas',
+                            title: 'Empresas',
+                            hint: `${m.companies ?? 0} na carteira`,
+                            icon: '▣',
+                          },
+                          {
+                            href: '/instrumentos',
+                            title: 'Instrumentos',
+                            hint: 'CCT / ACT aplicáveis',
+                            icon: '☰',
+                          },
+                          {
+                            href: '/empresas/importar',
+                            title: 'Importações',
+                            hint: 'CSV e validação',
+                            icon: '↑',
+                          },
+                          {
+                            href: '/vigilancia',
+                            title: 'Monitoramento',
+                            hint: 'Fontes e cobertura',
+                            icon: '◎',
+                          },
+                        ]}
+                      />
+                    </div>
+                  </section>
+                </aside>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Shell>
