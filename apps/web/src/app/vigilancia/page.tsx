@@ -67,11 +67,17 @@ export default function VigilanciaPage() {
       const key = String(s.health || 'UNKNOWN');
       map.set(key, (map.get(key) || 0) + 1);
     }
-    return [...map.entries()].map(([id, count]) => ({
-      id,
-      label: healthLabel(id).label || labelOf(id),
-      count,
-    }));
+    return [...map.entries()].map(([id, count]) => {
+      const h = healthLabel(id);
+      const tone =
+        h.tone === 'ok' ? 'ok' : h.tone === 'warn' ? 'warn' : h.tone === 'danger' ? 'danger' : 'info';
+      return {
+        id,
+        label: h.label || labelOf(id),
+        count,
+        tone: tone as 'ok' | 'warn' | 'danger' | 'info',
+      };
+    });
   }, [data?.sources]);
 
   return (
